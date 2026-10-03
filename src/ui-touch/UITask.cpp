@@ -16700,6 +16700,7 @@ static void buildDeviceSettings(int sec) {
 
   // Calibrate battery: capture the current voltage as 100% (for custom packs /
   // builds whose full voltage isn't 4.2 V). Tap = set 100%; long-press = reset.
+#if CAP_BATTERY
   {
     lv_obj_t* b_cal = lv_btn_create(body);
     lv_obj_set_size(b_cal, lv_pct(100), SC(34));
@@ -16716,6 +16717,7 @@ static void buildDeviceSettings(int sec) {
     lv_obj_center(l_cal);
     y += SC(46);
   }
+#endif
 
 #if 0  // Live-info panel retired — About's System Info already covers firmware/model/key/counts/batt/time.
   // ----- Live info panel (below action buttons) -----
@@ -22288,6 +22290,10 @@ static uint16_t batteryMvSmoothed() {
 
 static int batteryPercentFromMv(uint16_t mv);   // fwd decl (icon derives from %)
 static const char* batteryGlyphForMv(uint16_t mv) {
+#if !CAP_BATTERY
+  (void)mv;
+  return LV_SYMBOL_USB;   // no battery fitted: always powered from USB
+#endif
   if (mv == 0)               return LV_SYMBOL_BATTERY_EMPTY;
   if (batteryIsCharging(mv)) return LV_SYMBOL_CHARGE;   // on USB power
   // Derive the icon from the (calibrated) percent so custom packs whose full
@@ -22840,7 +22846,11 @@ static void refreshHomeBattery() {
     int pct = batteryPercentFromMv(mv);
     if (pct != s_last_pct || charging != s_last_chg) {
       char buf[12];
+#if !CAP_BATTERY
+      if (pct < 0)       buf[0] = '\0';   // no battery: never "?"
+#else
       if (pct < 0)       snprintf(buf, sizeof(buf), "?");
+#endif
       else if (charging) snprintf(buf, sizeof(buf), "CHG");
       else               snprintf(buf, sizeof(buf), "%d%%", pct);
       lv_label_set_text(s_home_batt_pct, buf);
@@ -52007,7 +52017,13 @@ static bool tsBleOff()     {
 }
 // tsOnBattery: true when NOT charging (mirrors the charging bool in updateGlobalStatusBar
 // — batteryIsCharging(batteryMvSmoothed())).
-static bool tsOnBattery()  { return !batteryIsCharging(batteryMvSmoothed()); }
+static bool tsOnBattery()  {
+#if !CAP_BATTERY
+  return false;   // no battery: always on USB power
+#else
+  return !batteryIsCharging(batteryMvSmoothed());
+#endif
+}
 // tsMeshIdle: true when the radio is NOT mid-receive (preamble→RxDone race guarded),
 // AND no outbound packet / retry / contact write is due now. Future retry and
 // write deadlines are allowed to use the timed idle-power-saving path.
@@ -53137,7 +53153,11 @@ static void updateGlobalStatusBar() {
   if (pct != s_last_pct || charging != s_last_charging) {
     char buf[8];
     if (charging)       buf[0] = '\0';                       // charging -> batteryGlyphForMv shows the bolt; no text
+#if !CAP_BATTERY
+    else if (pct < 0)   buf[0] = '\0';                       // no battery: nothing to report, never "?"
+#else
     else if (pct < 0)   snprintf(buf, sizeof(buf), "?");
+#endif
     else                snprintf(buf, sizeof(buf), "%d%%", pct);
     lv_label_set_text(g_statusbar.batt_pct, buf);
     if (charging != s_last_charging) {
