@@ -11,7 +11,7 @@ USB) and the [GitHub releases](https://github.com/ALLFATHER-BV/wadamesh/releases
 | LilyGo T-Deck / T-Deck Plus | ESP32-S3, SX1262 | 2.8" 320x240 touch, QWERTY, trackball | Web flasher (standalone) or Launcher app image | Stable | Fully supported, reference device |
 | LilyGo T-Deck Pro | ESP32-S3, SX1262 | 3.1" 240x320 e-paper touch, TCA8418 QWERTY | Development build only | Experimental | Initial target; display, touch, keyboard, radio, GPS and microSD validation pending (#62) |
 | LilyGo T-Deck Max | ESP32-S3, SX1262 | 3.1" 240x320 e-paper touch, TCA8418 QWERTY | Web flasher | Experimental (new in beta_84) | The Pro's hardware with the peripheral power rails and resets on an XL9555 expander and a BQ27220 fuel gauge; contributed and tested by the author of PR #545 |
-| Seeed SenseCAP Indicator D1L / D1Pro | ESP32-S3, SX1262 | 4" 480x480 touch (FT6336) | Development build only | Experimental | Initial target; display, touch and radio validation pending |
+| Seeed SenseCAP Indicator D1L | ESP32-S3, SX1262 | 4" 480x480 touch (FT6336) | Development build only | Experimental | Initial target; display, touch and radio validation pending |
 | Heltec V4 + TFT | ESP32-S3, SX1262 | 2.4" 240x320 touch (CHSC6x) | Web flasher | Stable | Fully supported; Expansion Kit sensors, V4.3 high-gain RX toggle |
 | Tanmatsu | ESP32-P4 + ESP32-C6, SX1262 | 4" 800x480, 69-key keyboard (no touch) | Tanmatsu app store on the device (runs under the badge.team launcher, not web-flashable) | Store tracks the test channel | Fully supported; LoRa + Wi-Fi + Bluetooth simultaneously, standalone and companion in one |
 | Elecrow ThinkNode M9 | ESP32-S3, LR1110 | 2.4" 240x320 (no touch), I2C QWERTY + d-pad | Web flasher | Beta (new in beta_38) | Hardware-complete community port by ded (#138): GPS, microSD, buzzer, lock screen, d-pad navigation |
@@ -125,9 +125,10 @@ USB) and the [GitHub releases](https://github.com/ALLFATHER-BV/wadamesh/releases
   CrowPanel. Like Wio Tracker L2, it is included in the all-target builds and local beta release
   scripts, not the two-board stable CI workflow. Select it in the upload
   helper with `scripts/build-upload-monitor.sh --crowpanel-35`.
-- **SenseCAP Indicator D1L / D1Pro**: USB-powered, no battery (the UI shows a USB
+- **SenseCAP Indicator D1L**: USB-powered, no battery (the UI shows a USB
   glyph and hides Power off). The RP2040 peripherals (buzzer, microSD, Grove, D1Pro
-  sensors) are not used yet, and without storage there are no map tiles. See
+  sensors) are not used yet, and without storage there are no map tiles. The D1Pro
+  shares the ESP32 side and is expected to run the same image, but is untested. See
   [variants/sensecap_indicator/PORT.md](variants/sensecap_indicator/PORT.md).
 
 ## Requested boards

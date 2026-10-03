@@ -18,8 +18,8 @@ constexpr uint8_t kBacklightChannel = 7;
 constexpr uint8_t kDefaultBrightness = 160;
 }  // namespace
 
-// List 1 comes from Meshtastic device-ui (MIT), include/graphics/LGFX/LGFX_INDICATOR.h
-// @ 62ed2aa2, Panel_Indicator::getInitCommands. The closing 0xFF,0xFF ends the
+// List 1 comes from Meshtastic device-ui (MIT License, Copyright (c) Meshtastic),
+// include/graphics/LGFX/LGFX_INDICATOR.h @ 62ed2aa2, Panel_Indicator::getInitCommands. The closing 0xFF,0xFF ends the
 // list; without it the panel comes up with inverted colours.
 const uint8_t* IndicatorPanel::getInitCommands(uint8_t listno) const {
   static constexpr const uint8_t list1[] = {

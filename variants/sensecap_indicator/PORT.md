@@ -6,7 +6,7 @@ PlatformIO environment:
 sensecap_indicator_companion_radio_touch
 ```
 
-The SenseCAP Indicator D1L is an ESP32-S3 (8 MB flash, 8 MB octal PSRAM) with a 4-inch 480x480 RGB panel behind an ST7701S, an FT6336 capacitive touch controller and an SX1262. A TCA9535 I/O expander carries the radio chip select, reset, BUSY and DIO1 lines as well as the display chip select and reset and the touch reset and interrupt. A separate RP2040 co-processor owns the buzzer, microSD, Grove connector and (on the D1Pro) the sensors; this build does not use it. The D1Pro shares the ESP32 side of the board, so the same firmware image is intended to run on it; only the D1L is the reference target.
+The SenseCAP Indicator D1L is an ESP32-S3 (8 MB flash, 8 MB octal PSRAM) with a 4-inch 480x480 RGB panel behind an ST7701S, an FT6336 capacitive touch controller and an SX1262. A TCA9535 I/O expander carries the radio chip select, reset, BUSY and DIO1 lines as well as the display chip select and reset and the touch reset and interrupt. A separate RP2040 co-processor owns the buzzer, microSD, Grove connector and (on the D1Pro) the sensors; this build does not use it. The D1Pro shares the ESP32 side of the board and is expected to run this image, but it is untested; the D1L is the reference target.
 
 The board is USB-powered and has no battery. `CAP_BATTERY` is 0, so the UI shows a USB glyph instead of a battery percentage and hides Power off.
 
@@ -44,9 +44,9 @@ The radio pins are virtual numbers that the HAL maps to the expander: `P_LORA_NS
 
 ## Boot sequence
 
-`IndicatorBoard::begin()` runs `ESP32Board::begin()`, then `IndicatorIo::begin()` under the shared I2C bus lock: 400 kHz clock, expander probe and shadow seed, NSS/CS/RESET outputs driven high, the four inputs configured, and a five-sample read of the radio strap (a majority decides the TCXO selection, so a single glitch cannot flip it). The log line `[indicator] expander out=..` reports the result.
+`IndicatorBoard::begin()` runs `ESP32Board::begin()`, then `IndicatorIo::begin()` under the shared I2C bus lock: 400 kHz clock, expander probe and shadow seed, NSS/CS/RESET outputs driven high, the four inputs configured, and a five-sample read of the radio strap (a majority decides the TCXO selection, so a single glitch cannot flip it). `[indicator] expander seeded out=.. cfg=..` logs the registers as the previous firmware or a warm reset left them, `[indicator] expander out=..` the result. A failure names its step: seed read, output config, input config or strap read.
 
-`display.begin()` follows: radio NSS high, LCD CS high, LCD RESET low for 10 ms and high again with a 120 ms settle, then with the bus lock held CS low, the LovyanGFX panel init, CS high. Holding the lock keeps any other task from moving the radio NSS while the init bit-bangs the shared GPIO 41/48. The panel init restores those two pins afterwards, and nothing writes panel commands after init. The backlight starts at about 63 % over a black frame. If the expander is not ready, `display.begin()` returns false and the UI is skipped.
+`display.begin()` follows: radio NSS high, LCD CS high, LCD RESET low for 10 ms and high again with a 120 ms settle, then with the bus lock held CS low, the LovyanGFX panel init, CS high. Holding the lock keeps any other task from moving the radio NSS while the init bit-bangs the shared GPIO 41/48. The panel init restores those two pins afterwards, and nothing writes panel commands after init. The backlight starts at about 63 % over a black frame. If the expander is not ready, `_lcd.init()` fails (`[indicator] display: lcd.init failed`) or an expander write during the sequence fails, `display.begin()` leaves the backlight off and returns false, and the UI is skipped.
 
 `radio_init()` runs after the display, so the radio's FSPI claims GPIO 41/47/48 once LovyanGFX has released them.
 
@@ -54,15 +54,17 @@ The radio pins are virtual numbers that the HAL maps to the expander: `P_LORA_NS
 
 The SX1262 sits behind the expander, so RadioLib runs on `IndicatorRadioHal`, a subclass of `ArduinoHal`:
 
-- Pins with the expander flag (`0x40` and up) go through the TCA9535; every other pin forwards to `ArduinoHal`. `RADIOLIB_NC` is not an expander pin.
+- Pins with the expander flag (`0x40` and up) go through the TCA9535; every other pin goes straight to the Arduino pin and interrupt functions, as in `ArduinoHal`. `RADIOLIB_NC` is not an expander pin.
 - NSS toggles around every SPI transfer, each edge one expander write. RESET adds a 20 ms settle after its rising edge.
 - Every expander access holds the shared I2C bus lock, which is a recursive mutex with priority inheritance.
 
 Interrupt dispatch: the expander's /INT output is wired to GPIO 42. Its ISR (in IRAM) only notifies the `ind_dio1` task (3072-byte stack, high priority, core 1). That task reads port 0 under the bus lock and never touches RadioLib or SPI. `Dio1Edge` watches bit 3 of every port-0 read and fires the RadioLib receive callback exactly once per 0-to-1 transition. This holds whichever reader sees the edge: the dispatch task, or a BUSY poll inside an SPI transfer (that read clears /INT, so the edge is still delivered from there). A DIO1 level that stays high while another input changes (touch INT, BUSY) does not fire again. The task also wakes every 50 ms as a net for a /INT that was already low when the ISR attached.
 
+/INT wake log: several port-1 inputs float and the expander has no pull-ups, so /INT can toggle continuously, and every toggle costs an I2C read at high priority. The dispatch task counts ISR notifications and 50 ms timeouts and logs `[indicator] /INT wakes=<n>/10s timeouts=<n>` every 10 s for the first minute, then only while the ISR rate is above 500/s, at most once a minute.
+
 Polled backstop: `MESH_RADIO_DIO1_POLLED=1` makes the radio wrapper poll the SX1262 IRQ status in the receive path, so a lost expander edge cannot stall RX.
 
-TCXO strap: P1.3 high means a TCXO is fitted. `indicatorTcxoVoltage()` returns 2.4 V in that case and 0 V (crystal) otherwise; `SX126X_DIO3_TCXO_VOLTAGE` calls it at radio init. The flag is quoted in `platformio.ini` so that SCons' shell does not choke on the parentheses. `[indicator] radio tcxo=..` logs the choice.
+TCXO strap: P1.3 high means a TCXO is fitted. `indicatorTcxoVoltage()` returns 2.4 V in that case and 0 V (crystal) otherwise; `SX126X_DIO3_TCXO_VOLTAGE` calls it at radio init. The flag is quoted in `platformio.ini` so that SCons' shell does not choke on the parentheses. When the first `radio_init()` fails, `main.cpp` calls it once more, and that call tries the other setting (0 V if the strap said TCXO, 2.4 V if it said crystal), since `std_init` only falls back from TCXO to 0 V by itself. `[indicator] radio tcxo requested=..` logs the request and `[indicator] radio up, tcxo used=..` the voltage the radio came up with.
 
 `IndicatorBoard` overrides `getIRQGpio()` (42) and `sleep()` (a 1 ms delay) so the base class never uses the virtual expander pin for GPIO wake.
 
@@ -76,13 +78,15 @@ Pixel clock: `INDICATOR_PCLK_HZ=6000000` (6 MHz). The RGB bus reads the PSRAM fr
 
 LVGL draw buffer: a 480x24 band (23040 bytes), allocated in internal DMA RAM with PSRAM as the fallback.
 
+Home screen: the panel is square, so the generic portrait home does not fit. The home tab uses the landscape launcher column (Advert, Terminal, Apps, Control) on the right, beside the status lines and, at Normal UI size, the TX/RX chart; the info card runs full width along the bottom, sized to its eight rows. The column is 92, 124 or 148 px wide at Normal, Large or Huge. Other screens keep their portrait layout.
+
 Brightness: the UI slider drives `Light_PWM`; 0 switches the backlight off (duty 0). Screen sleep writes 0 and wake restores the slider level.
 
 Colour byte order: pixels are written as on the other LovyanGFX boards (`setSwapBytes(true)` with `LV_COLOR_16_SWAP` 0). This is covered by the boot-and-colours check below.
 
 ## Touch
 
-FT6336 at 0x48 on the shared I2C bus, polled by the `indicator_touch` task on core 0 (3072-byte stack). Registers: status plus first point at 0x02 (5 bytes), chip id at 0xA3 (0x64 expected, logged, not fatal), vendor id at 0xA8 (logged). The reset pulse goes through the expander (P0.7).
+FT6336 at 0x48 on the shared I2C bus, polled by the `indicator_touch` task on core 0 (3072-byte stack). Registers: status plus first point at 0x02 (5 bytes), chip id at 0xA3 (0x64 expected, logged, not fatal), vendor id at 0xA8 (logged). The reset pulse goes through the expander (P0.7) and runs on the first probe only. If the controller does not answer, the UI retries the probe at most every 2 s, and the failure is logged once.
 
 Rotation: the controller reports both axes mirrored relative to the panel, so `x = 479 - raw_x` and `y = 479 - raw_y`, clamped to 0..479. The raw point is kept for the calibration screen. Gesture thresholds (40 and 16 px, 12 ms) are shared with the Wio Tracker L2 touch code.
 
@@ -99,7 +103,7 @@ Partition table `variants/sensecap_indicator/partitions_sensecap_indicator.csv`,
 | spiffs | 0x710000 | 0xE0000 |
 | coredump | 0x7F0000 | 0x10000 |
 
-Measured image size: 3132993 bytes (85.4 %) of the 3670016-byte (0x380000) app slot, leaving 537023 bytes of headroom.
+Measured image size: 3133129 bytes (85.4 %) of the 3670016-byte (0x380000) app slot, leaving 536887 bytes of headroom.
 
 ## Not in this port
 
@@ -120,3 +124,7 @@ Nothing below has been run on hardware yet.
 - [ ] Spectrum: the spectrum scan screen runs and shows plausible noise floor and a known transmitter
 - [ ] 2 h RX soak: radio idle in RX for two hours with no missed packets, no panel glitches and no reboot
 - [ ] 6/8/10/12 MHz pixel-clock soak: for each `INDICATOR_PCLK_HZ` value, Wi-Fi traffic plus SPIFFS writes with no tearing, shifted frames or reboots; keep the highest stable value
+- [ ] Warm reset and first boot after other firmware: a reset from the UI, and the first boot after Meshtastic and after the Seeed stock firmware, bring up panel, touch and radio (the expander state is inherited, see the `expander seeded` line)
+- [ ] UI layout at Normal, Large and Huge: home, composer, control centre and popups fit the 480x480 panel with nothing overlapping or clipped
+- [ ] Idle /INT wake rate and I2C load: the `/INT wakes` lines over the first minute at idle, and whether the floating port-1 inputs keep the dispatch task busy
+- [ ] D1Pro: the same image boots on a D1Pro, with panel, touch and radio working (the RP2040 sensors stay unused)
