@@ -185,6 +185,8 @@ static_assert(ChannelSenderSplit::kMaxWireName >= (size_t)UITask::MAX_SENDER_NAM
     #include <TDeckProDisplay.h>
   #elif defined(TLORA_PAGER)
     #include <helpers/ui/ST7796LCDDisplay.h>
+  #elif defined(HAS_SENSECAP_INDICATOR)
+    #include <IndicatorDisplay.h>
   #elif defined(HAS_WIO_TRACKER_L2)
     #include <WioTrackerL2Display.h>
     #include <WioTrackerL2Io.h>
@@ -254,6 +256,8 @@ static_assert(ChannelSenderSplit::kMaxWireName >= (size_t)UITask::MAX_SENDER_NAM
     extern TDeckProDisplay display;
   #elif defined(TLORA_PAGER)
     extern ST7796LCDDisplay display;
+  #elif defined(HAS_SENSECAP_INDICATOR)
+    extern IndicatorDisplay display;
   #elif defined(HAS_WIO_TRACKER_L2)
     extern WioTrackerL2Display display;
   #elif defined(HAS_CROWPANEL_35)
@@ -32750,6 +32754,8 @@ static int wifiScanWatchdogSafe(uint32_t cap_ms, uint16_t per_chan_ms = 300) {
   #endif
 #elif defined(ATTAKY_MESH_SERIES)
 #define WADA_BOARD_ID "attaky"
+#elif defined(HAS_SENSECAP_INDICATOR)
+#define WADA_BOARD_ID "sensecap-indicator"
 #elif defined(HAS_WIO_TRACKER_L2)
 #define WADA_BOARD_ID "wio-tracker-l2"
 #elif defined(HAS_CROWPANEL_35)
