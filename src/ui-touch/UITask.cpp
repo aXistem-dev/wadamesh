@@ -48954,12 +48954,17 @@ static void openControlCenter() {
   const uint16_t mv = batteryMvSmoothed();
   const int pct = batteryPercentFromMv(mv);
   char batt_s[28];
+#if !CAP_BATTERY
+  (void)pct;
+  snprintf(batt_s, sizeof batt_s, "%s", TR("USB powered"));   // no battery: no % or voltage
+#else
   if (batteryIsCharging(mv))
     snprintf(batt_s, sizeof batt_s, LV_SYMBOL_CHARGE " Charging  %u.%02uV",
              (unsigned)(mv / 1000), (unsigned)((mv % 1000) / 10));
   else
     snprintf(batt_s, sizeof batt_s, "%d%%  %u.%02uV",
              pct < 0 ? 0 : pct, (unsigned)(mv / 1000), (unsigned)((mv % 1000) / 10));
+#endif
   char winfo[40] = "Wi-Fi off";
 #if defined(ESP32)
   if (WiFi.status() == WL_CONNECTED)

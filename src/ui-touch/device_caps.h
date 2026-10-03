@@ -544,6 +544,7 @@
   #else
     #define CAP_BUILTIN_LUA_APPS 0
   #endif
+#endif
 
 // USB-powered boards with no battery: show a power glyph, never "?" (see UITask.cpp
 // batteryGlyphForMv / status-bar percent / tsOnBattery / Calibrate row).
@@ -551,5 +552,4 @@
   #define CAP_BATTERY 0
 #else
   #define CAP_BATTERY 1
-#endif
 #endif
