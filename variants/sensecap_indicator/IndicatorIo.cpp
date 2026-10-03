@@ -62,24 +62,32 @@ bool begin() {
   Wire.setClock(400000);
 
   if (!s_chip.begin()) {
-    Serial.println("[indicator] expander probe failed");
+    Serial.println("[indicator] expander: seed read failed (no ack at 0x20?)");
     return false;
   }
+  // What the previous firmware or a warm reset left behind.
+  Serial.printf("[indicator] expander seeded out=%02X/%02X cfg=%02X/%02X\n", s_chip.output(0),
+                s_chip.output(1), s_chip.config(0), s_chip.config(1));
 
   // NSS high first, so the SX1262 ignores the panel-init bytes on the shared lines.
   if (!s_chip.setOutput(kLoraNss, true) || !s_chip.setOutput(kLcdCs, true) ||
       !s_chip.setOutput(kLcdReset, true) || !s_chip.setOutput(kTouchReset, true) ||
       !s_chip.setOutput(kRp2040Reset, true)) {
+    Serial.println("[indicator] expander: output config failed");
     return false;
   }
   if (!s_chip.setInput(kLoraBusy) || !s_chip.setInput(kLoraDio1) ||
       !s_chip.setInput(kTouchInt) || !s_chip.setInput(kRadioStrap)) {
+    Serial.println("[indicator] expander: input config failed");
     return false;
   }
 
   bool samples[5];
   for (int i = 0; i < 5; ++i) {
-    if (!s_chip.readPin(kRadioStrap, samples[i])) return false;
+    if (!s_chip.readPin(kRadioStrap, samples[i])) {
+      Serial.println("[indicator] expander: strap read failed");
+      return false;
+    }
     delay(1);
   }
   s_tcxo = indicator::strapMajority(samples);

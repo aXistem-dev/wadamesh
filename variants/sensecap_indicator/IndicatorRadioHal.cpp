@@ -18,6 +18,15 @@ constexpr uint32_t kDispatchStackBytes = 3072;
 constexpr TickType_t kLostIntPoll = pdMS_TO_TICKS(50);
 constexpr uint32_t kResetSettleMs = 20;        // without it begin() reports CHIP_NOT_FOUND
 
+// /INT wake log. Several port-1 inputs float with no pull-up, so /INT can toggle
+// without end, and each toggle costs an I2C read at high priority. One line every
+// 10 s for the first minute, then only while the rate stays above 500/s, at most
+// once a minute.
+constexpr TickType_t kWakeWindow = pdMS_TO_TICKS(10000);
+constexpr TickType_t kWakeVerboseFor = pdMS_TO_TICKS(60000);
+constexpr TickType_t kWakeStormLogEvery = pdMS_TO_TICKS(60000);
+constexpr uint32_t kWakeStormPerWindow = 500 * 10;
+
 // Set in OUTPUT and OUTPUT_OPEN_DRAIN, clear in INPUT and its pull variants.
 constexpr uint32_t kOutputModeBit = OUTPUT & ~INPUT;
 
@@ -35,14 +44,41 @@ void IRAM_ATTR onExpanderInt() {
 // anyway, in case /INT fell while the ISR was not yet attached or a change
 // landed inside another reader's transfer.
 void dispatchTask(void*) {
+  const TickType_t started = xTaskGetTickCount();
+  TickType_t windowStart = started;
+  TickType_t lastStormLog = 0;
+  bool stormLogged = false;
+  uint32_t wakes = 0, timeouts = 0;
   for (;;) {
-    ulTaskNotifyTake(pdTRUE, kLostIntPoll);
-    IndicatorIo::BusLock lock;
-    // Both input bytes: /INT clears only when the port that changed is read, so a
-    // port-0-only read would leave a port-1 change holding GPIO42 low for good.
-    // A port-1 pin read covers both bytes and still reports port 0 to the observer.
-    bool strap = false;
-    IndicatorIo::chip().readPin(pins::kRadioStrap, strap);
+    // The return value is the number of ISR notifications since the last take;
+    // zero means the 50 ms timeout expired.
+    const uint32_t notified = ulTaskNotifyTake(pdTRUE, kLostIntPoll);
+    if (notified) wakes += notified;
+    else ++timeouts;
+    {
+      IndicatorIo::BusLock lock;
+      // Both input bytes: /INT clears only when the port that changed is read, so a
+      // port-0-only read would leave a port-1 change holding GPIO42 low for good.
+      // A port-1 pin read covers both bytes and still reports port 0 to the observer.
+      bool strap = false;
+      IndicatorIo::chip().readPin(pins::kRadioStrap, strap);
+    }
+    const TickType_t now = xTaskGetTickCount();
+    if (now - windowStart < kWakeWindow) continue;
+    const bool early = now - started <= kWakeVerboseFor;
+    const bool storm = wakes > kWakeStormPerWindow &&
+                       (!stormLogged || now - lastStormLog >= kWakeStormLogEvery);
+    if (early || storm) {
+      if (!early) {
+        stormLogged = true;
+        lastStormLog = now;
+      }
+      Serial.printf("[indicator] /INT wakes=%lu/10s timeouts=%lu\n", (unsigned long)wakes,
+                    (unsigned long)timeouts);
+    }
+    wakes = 0;
+    timeouts = 0;
+    windowStart = now;
   }
 }
 

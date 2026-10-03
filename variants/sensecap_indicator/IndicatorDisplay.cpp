@@ -143,15 +143,27 @@ bool IndicatorDisplay::begin() {
     ok = io.setOutput(indicator::pins::kLcdReset, true) && ok;
   }
   delay(120);
+  bool lcdOk = false;
   {
     // One lock from CS low to CS high: no other task may move the radio's NSS
     // while LovyanGFX bit-bangs the panel's init over the shared GPIO41/48.
     IndicatorIo::BusLock lock;
     ok = io.setOutput(indicator::pins::kLcdCs, false) && ok;
-    _lcd.init();
+    lcdOk = _lcd.init();
     ok = io.setOutput(indicator::pins::kLcdCs, true) && ok;
   }
-  if (!ok) Serial.println("[indicator] display: expander write failed during panel init");
+  // A failed init leaves the backlight at the 0 the panel init wrote. A
+  // successful init lights it, so a missed expander write turns it off again:
+  // the panel may not have seen its reset or init commands.
+  if (!lcdOk) {
+    Serial.println("[indicator] display: lcd.init failed");
+    return false;
+  }
+  if (!ok) {
+    _lcd.setBrightness(0);
+    Serial.println("[indicator] display: expander write failed during panel init");
+    return false;
+  }
 
   // Pixels go in as the RAK/Wio LovyanGFX drivers pass them (LV_COLOR_16_SWAP 0
   // plus setSwapBytes); byte order is unverified on hardware, see the PORT.md checklist.

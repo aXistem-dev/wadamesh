@@ -22,6 +22,9 @@ constexpr uint8_t kRegStatus = 0x02;
 constexpr uint8_t kRegChipId = 0xA3;
 constexpr uint8_t kRegVendorId = 0xA8;
 constexpr int kMax = 479;
+// UITask calls begin on every loop pass until it succeeds. Only the first call
+// pulses reset and waits for the controller; later calls re-probe at most this often.
+constexpr uint32_t kReprobeMs = 2000;
 
 bool s_ready = false;
 bool s_down = false;
@@ -101,16 +104,29 @@ void setReset(bool high) {
 }  // namespace
 
 bool heltecV4CapTouchBegin() {
-  // Reset pulse; the bus lock is not held across the sleeps.
-  setReset(false);
-  delay(10);
-  setReset(true);
-  delay(300);
+  static bool s_resetDone = false;
+  static bool s_failLogged = false;
+  static uint32_t s_lastProbe = 0;
+  if (s_ready) return true;
+  if (!s_resetDone) {
+    // Reset pulse; the bus lock is not held across the sleeps.
+    s_resetDone = true;
+    setReset(false);
+    delay(10);
+    setReset(true);
+    delay(300);
+  } else if ((uint32_t)(millis() - s_lastProbe) < kReprobeMs) {
+    return false;
+  }
+  s_lastProbe = millis();
 
   uint8_t id = 0, vendor = 0;
   if (!readRegs(kRegChipId, &id, 1)) {
     snprintf(s_debug, sizeof(s_debug), "SenseCAP Indicator FT6336 (no ack)");
-    Serial.println("[touch] FT6336 not responding at 0x48");
+    if (!s_failLogged) {
+      s_failLogged = true;
+      Serial.println("[touch] FT6336 not responding at 0x48, re-probing every 2 s");
+    }
     return false;
   }
   const bool haveVendor = readRegs(kRegVendorId, &vendor, 1);
