@@ -16663,6 +16663,7 @@ static void buildDeviceSettings(int sec) {
   // Open the battery / power screen (same as tapping the battery icon in the top
   // bar). On the T-Deck this group also hosts the experimental battery saver.
   y += settingsRowLabel(body, y, 0, TR("Battery"), COLOR_SUB, &g_font_12, 0) + 2;
+#if CAP_BATTERY
   {
     lv_obj_t* b_bat = lv_btn_create(body);
     lv_obj_set_size(b_bat, lv_pct(100), SC(34));
@@ -16675,6 +16676,7 @@ static void buildDeviceSettings(int sec) {
     lv_obj_center(l_bat);
     y += SC(42);
   }
+#endif
   // Experimental battery saver (idle power-save) — throttles the CPU when the
   // device is parked (screen off, on battery, standalone). Moved here from
   // Settings -> Lock so it lives with the battery. Every board: the hooks are
@@ -22293,7 +22295,7 @@ static const char* batteryGlyphForMv(uint16_t mv) {
 #if !CAP_BATTERY
   (void)mv;
   return LV_SYMBOL_USB;   // no battery fitted: always powered from USB
-#endif
+#else
   if (mv == 0)               return LV_SYMBOL_BATTERY_EMPTY;
   if (batteryIsCharging(mv)) return LV_SYMBOL_CHARGE;   // on USB power
   // Derive the icon from the (calibrated) percent so custom packs whose full
@@ -22304,6 +22306,7 @@ static const char* batteryGlyphForMv(uint16_t mv) {
   if (pct >= 40) return LV_SYMBOL_BATTERY_2;
   if (pct >= 15) return LV_SYMBOL_BATTERY_1;
   return LV_SYMBOL_BATTERY_EMPTY;
+#endif
 }
 
 static int batteryPercentFromMv(uint16_t mv) {
@@ -22885,6 +22888,7 @@ static void refreshHomeBattery() {
   }
 }
 
+#if CAP_BATTERY   // a board with no battery has no reading to pop up
 // Long-press the home battery glyph → details popup.
 static void homeBatteryLongPressCb(lv_event_t* e) {
   if (lv_event_get_code(e) != LV_EVENT_LONG_PRESSED || !g_lv.task) return;
@@ -22907,6 +22911,7 @@ static void homeBatteryLongPressCb(lv_event_t* e) {
   }
   g_lv.task->showAlert(msg, 3500);
 }
+#endif  // CAP_BATTERY
 
 // Reason the last downscaling JPEG decode failed (shown in the UI). File-scope +
 // UNGUARDED: the decoder lives outside the HAS_TDECK_GT911 block below, while the
@@ -53757,11 +53762,17 @@ static void refreshStatusLabels() {
     const char* nm = g_lv.task->getNodeNameCstr();
     if (!nm || !nm[0]) nm = "node";
     const int      snr = the_mesh.uiSignalSnrQ4() / 4;
+#if CAP_BATTERY
     const uint16_t mv  = g_lv.task->getBattMilliVolts();
+#endif
     const uint32_t up  = millis() / 1000;
     char val[224];
     snprintf(val, sizeof val,
+#if !CAP_BATTERY
+        "%s\n%.3f MHz\nSF%u \xC2\xB7 BW%.0f \xC2\xB7 %ddBm\n%d dB\n%d\n%d\n%s\n%uh %02um",
+#else
         "%s\n%.3f MHz\nSF%u \xC2\xB7 BW%.0f \xC2\xB7 %ddBm\n%d dB\n%d\n%d\n%.2f V\n%uh %02um",
+#endif
         nm,
         pr ? (double)pr->freq : 0.0,
         pr ? (unsigned)pr->sf : 0u,
@@ -53769,7 +53780,11 @@ static void refreshStatusLabels() {
         pr ? (int)pr->tx_power_dbm : 0,
         snr,
         the_mesh.getNumContacts(), the_mesh.getNumChannels(),
+#if !CAP_BATTERY
+        TR("USB powered"),   // no battery: no voltage to show
+#else
         mv / 1000.0,
+#endif
         (unsigned)(up / 3600), (unsigned)((up % 3600) / 60));
     setLabelIfChanged(s_home_info, val);
   }
