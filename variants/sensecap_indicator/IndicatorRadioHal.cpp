@@ -30,7 +30,7 @@ void IRAM_ATTR onExpanderInt() {
   if (woken) portYIELD_FROM_ISR();
 }
 
-// Never touches RadioLib or SPI. The port-0 read clears /INT and feeds the
+// Never touches RadioLib or SPI. The input read clears /INT and feeds the
 // observer, which calls the radio callback on a DIO1 rise. The timeout re-reads
 // anyway, in case /INT fell while the ISR was not yet attached or a change
 // landed inside another reader's transfer.
@@ -38,8 +38,11 @@ void dispatchTask(void*) {
   for (;;) {
     ulTaskNotifyTake(pdTRUE, kLostIntPoll);
     IndicatorIo::BusLock lock;
-    uint8_t port0 = 0;
-    IndicatorIo::chip().readPort0(port0);
+    // Both input bytes: /INT clears only when the port that changed is read, so a
+    // port-0-only read would leave a port-1 change holding GPIO42 low for good.
+    // A port-1 pin read covers both bytes and still reports port 0 to the observer.
+    bool strap = false;
+    IndicatorIo::chip().readPin(pins::kRadioStrap, strap);
   }
 }
 
