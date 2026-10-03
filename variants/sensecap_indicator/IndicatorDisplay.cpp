@@ -78,11 +78,11 @@ IndicatorDisplay::IndicatorDisplay() : DisplayDriver(480, 480) {
     cfg.pin_d9 = GPIO_NUM_6;   // G4
     cfg.pin_d10 = GPIO_NUM_5;  // G5
 
-    cfg.pin_d11 = GPIO_NUM_4;  // R0
-    cfg.pin_d12 = GPIO_NUM_3;  // R1
-    cfg.pin_d13 = GPIO_NUM_2;  // R2
-    cfg.pin_d14 = GPIO_NUM_1;  // R3
-    cfg.pin_d15 = GPIO_NUM_0;  // R4
+    cfg.pin_d11 = GPIO_NUM_4;  // red bit 0
+    cfg.pin_d12 = GPIO_NUM_3;  // red bit 1
+    cfg.pin_d13 = GPIO_NUM_2;  // red bit 2
+    cfg.pin_d14 = GPIO_NUM_1;  // red bit 3
+    cfg.pin_d15 = GPIO_NUM_0;  // red bit 4
 
     cfg.pin_henable = GPIO_NUM_18;
     cfg.pin_vsync = GPIO_NUM_17;
