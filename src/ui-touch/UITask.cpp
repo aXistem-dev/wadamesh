@@ -7701,7 +7701,8 @@ static void kbShowRotateArrows(bool show) {
 // control. The arrows are not created on these boards; every other reference to
 // the two pointers is null-guarded, so leaving them null is enough to remove
 // the buttons everywhere — the same pattern the retired s_kb_alt_btn uses.
-#if !defined(HAS_WIO_TRACKER_L2) && !defined(HAS_CROWPANEL_35)
+// The SenseCAP Indicator's square 480x480 panel does not rotate either.
+#if !defined(HAS_WIO_TRACKER_L2) && !defined(HAS_CROWPANEL_35) && !defined(HAS_SENSECAP_INDICATOR)
 static void kbRotLeftCb(lv_event_t* e) {
   if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
   // Tap the left arrow: rotate landscape that way; tap again returns to portrait.
@@ -48774,7 +48775,7 @@ static void applyVolume(uint8_t pct) {
   if (pct > 100) pct = 100;
   s_volume_pct = pct;   // play paths read the persisted pref; this keeps the slider live
 }
-#elif defined(HAS_WIO_TRACKER_L2) || defined(HAS_CROWPANEL_35)
+#elif defined(HAS_WIO_TRACKER_L2) || defined(HAS_CROWPANEL_35) || defined(HAS_SENSECAP_INDICATOR)
 #define HAS_CC_BRIGHTNESS 1
 static uint8_t s_brightness_pct = 63;
 static void applyBrightness(uint8_t pct) {
@@ -56257,7 +56258,7 @@ static void buildUiTree() {
   };
   // Both buttons use the rotation/refresh glyph; left vs. right position
   // tells the user which way the display will turn.
-#if !defined(HAS_WIO_TRACKER_L2) && !defined(HAS_CROWPANEL_35)
+#if !defined(HAS_WIO_TRACKER_L2) && !defined(HAS_CROWPANEL_35) && !defined(HAS_SENSECAP_INDICATOR)
   s_kb_rot_left_btn  = makeRotBtn(LV_SYMBOL_REFRESH, kbRotLeftCb);
   s_kb_rot_right_btn = makeRotBtn(LV_SYMBOL_REFRESH, kbRotRightCb);
 #endif
@@ -62042,7 +62043,7 @@ void UITask::begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* no
 #else
 #if defined(HAS_RAK_TAP_V2) || defined(HAS_WIO_TRACKER_L2)
       const int draw_band_w = 320;
-#elif defined(HAS_CROWPANEL_35)
+#elif defined(HAS_CROWPANEL_35) || defined(HAS_SENSECAP_INDICATOR)
       const int draw_band_w = 480;
       g_draw_buf_px = draw_band_w * LV_DRAW_BUF_LINES;
 #else
@@ -62147,8 +62148,9 @@ void UITask::begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* no
     // must match so LVGL renders the full 320x240 landscape surface.
     s_ui_rotation = LV_DISP_ROT_270;
 #endif
-  #if defined(HAS_WIO_TRACKER_L2)
-    // The panel driver exposes its fixed 320x240 landscape surface directly.
+  #if defined(HAS_WIO_TRACKER_L2) || defined(HAS_SENSECAP_INDICATOR)
+    // The panel driver exposes its fixed surface directly (L2 320x240
+    // landscape, Indicator 480x480).
     s_ui_rotation = LV_DISP_ROT_NONE;
   #endif
 #if defined(ATTAKY_MESH_SERIES)
@@ -62263,6 +62265,9 @@ void UITask::begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* no
     // display for the browser without changing the physical placeholder panel.
     g_lv.disp_drv.hor_res  = (s_remote_mode && !s_remote_landscape) ? 222 : 480;
     g_lv.disp_drv.ver_res  = (s_remote_mode && !s_remote_landscape) ? 480 : 222;
+#elif defined(HAS_SENSECAP_INDICATOR)
+  g_lv.disp_drv.hor_res  = 480;
+  g_lv.disp_drv.ver_res  = 480;
 #elif defined(HAS_WIO_TRACKER_L2)
   g_lv.disp_drv.hor_res  = 320;
   g_lv.disp_drv.ver_res  = 240;
@@ -63578,8 +63583,9 @@ static inline void touchScreenBacklight(bool on) {
     ledcWrite(kM9BlPwmChannel, 255);   // inverted: 255 = 0% conduction = off
     touchPanelSleep(true);
   }
-#elif defined(HAS_WIO_TRACKER_L2) || defined(HAS_CROWPANEL_35)
-  // The display owns its backlight (I2C on Wio, PWM on CrowPanel).
+#elif defined(HAS_WIO_TRACKER_L2) || defined(HAS_CROWPANEL_35) || defined(HAS_SENSECAP_INDICATOR)
+  // The display owns its backlight (I2C on Wio, PWM on CrowPanel, LEDC on the
+  // Indicator).
   if (on) applyBrightness(s_brightness_pct);
   else    display.setBrightness(0);
 #elif defined(HAS_TDISPLAY_P4)
