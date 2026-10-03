@@ -10,15 +10,11 @@ namespace {
 
 constexpr uint8_t kAddress = 0x20;
 
+// Created on first use; the compiler guards the local static's initialisation,
+// so two tasks that reach the first BusLock together still get one mutex.
 SemaphoreHandle_t busMutex() {
   static StaticSemaphore_t storage;
-  static SemaphoreHandle_t handle = nullptr;
-  static portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
-  if (!handle) {
-    portENTER_CRITICAL(&mux);
-    if (!handle) handle = xSemaphoreCreateRecursiveMutexStatic(&storage);
-    portEXIT_CRITICAL(&mux);
-  }
+  static const SemaphoreHandle_t handle = xSemaphoreCreateRecursiveMutexStatic(&storage);
   return handle;
 }
 

@@ -4,7 +4,8 @@
 // RadioLib HAL for the SenseCAP Indicator. SCK/MISO/MOSI are real GPIOs on the
 // FSPI peripheral, but the SX1262's NSS, RESET, BUSY and DIO1 sit on the TCA9535
 // (P0.0..P0.3). The env names them with virtual pins 0x40..0x43; this HAL turns
-// those into expander transfers and hands every real GPIO to ArduinoHal.
+// those into expander transfers and hands every real GPIO straight to the
+// Arduino pin functions, as ArduinoHal does.
 //
 // DIO1 has no GPIO edge. The expander's open-drain /INT on GPIO42 wakes a
 // dispatch task that reads port 0, and every port-0 read -- that one, or a BUSY

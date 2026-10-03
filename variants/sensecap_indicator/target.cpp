@@ -23,17 +23,32 @@ EnvironmentSensorManager sensors;
 IndicatorDisplay display;
 MomentaryButton user_btn(PIN_USER_BTN, 1000, true);
 
+// main.cpp calls radio_init() again when the first call fails. Every other call
+// tries the setting the strap did not pick: std_init only falls back from TCXO to
+// 0 V, so a TCXO board whose strap misreads as crystal would otherwise never start.
+static bool s_tcxoAlternate = false;
+static uint8_t s_radioInitCalls = 0;
+
 float indicatorTcxoVoltage() {
-  return IndicatorIo::radioHasTcxo() ? 2.4f : 0.0f;
+  const bool tcxo = IndicatorIo::radioHasTcxo() != s_tcxoAlternate;
+  return tcxo ? 2.4f : 0.0f;
 }
 
 bool radio_init() {
   fallback_clock.begin();
   rtc_clock.begin(Wire);
-  Serial.printf("[indicator] radio tcxo=%.1f\n", indicatorTcxoVoltage());
+  s_tcxoAlternate = (s_radioInitCalls++ & 1) != 0;
+  Serial.printf("[indicator] radio tcxo requested=%.1f V (strap: %s%s)\n", indicatorTcxoVoltage(),
+                IndicatorIo::radioHasTcxo() ? "tcxo" : "crystal",
+                s_tcxoAlternate ? ", retry with the other setting" : "");
   // std_init starts FSPI on GPIO41/47/48; main.cpp runs display.begin() first,
   // and the panel init has handed GPIO41/48 back by then.
-  return radio.std_init(&radioSpi);
+  const bool ok = radio.std_init(&radioSpi);
+  // std_init and RadioLib can each drop to 0 V on their own; tcxoVoltage holds
+  // the value the last begin() ran with.
+  Serial.printf("[indicator] radio %s, tcxo used=%.1f V\n", ok ? "up" : "init failed",
+                radio.tcxoVoltage);
+  return ok;
 }
 
 mesh::LocalIdentity radio_new_identity() {

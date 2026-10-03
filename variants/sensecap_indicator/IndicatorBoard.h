@@ -3,6 +3,8 @@
 
 #include <helpers/ESP32Board.h>
 
+#include "IndicatorExpander.h"
+
 class IndicatorBoard : public ESP32Board {
 public:
   void begin();
@@ -12,7 +14,7 @@ public:
 
   // P_LORA_DIO_1 is an expander pin, not a GPIO. The line that reports radio
   // events to the ESP32 is the expander's /INT on GPIO42 (active low).
-  uint32_t getIRQGpio() override { return 42; }
+  uint32_t getIRQGpio() override { return indicator::kExpanderIntGpio; }
 
   // ESP32Board::sleep light-sleeps with getIRQGpio() as a high-level wake source.
   // /INT is active low and DIO1 is only seen through I2C, so never light-sleep.

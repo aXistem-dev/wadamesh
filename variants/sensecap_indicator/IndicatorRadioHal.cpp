@@ -11,9 +11,9 @@ namespace {
 
 using indicator::expanderBit;
 using indicator::isExpanderPin;
+using indicator::kExpanderIntGpio;
 namespace pins = indicator::pins;
 
-constexpr uint8_t kExpanderIntGpio = 42;       // TCA9535 /INT, open drain, active low
 constexpr uint32_t kDispatchStackBytes = 3072;
 constexpr TickType_t kLostIntPoll = pdMS_TO_TICKS(50);
 constexpr uint32_t kResetSettleMs = 20;        // without it begin() reports CHIP_NOT_FOUND
@@ -87,10 +87,10 @@ void dispatchTask(void*) {
 IndicatorRadioHal::IndicatorRadioHal(SPIClass& spi, uint32_t spiFreq)
     : ArduinoHal(spi, SPISettings(spiFreq, MSBFIRST, SPI_MODE0)) {}
 
-// Module::init() runs this from SX126x::begin(), before any pin call. The
-// observer goes in here rather than in the constructor: the expander object
-// lives in another translation unit and may not be constructed yet at static
-// init time.
+// Module::init() runs this from SX126x::begin(), before any pin call;
+// ArduinoHal::init() starts the SPI bus. The observer goes in here rather than
+// in the constructor: the expander object lives in another translation unit and
+// may not be constructed yet at static init time.
 void IndicatorRadioHal::init() {
   ArduinoHal::init();
   IndicatorIo::BusLock lock;
@@ -106,7 +106,7 @@ void IndicatorRadioHal::onPort0(uint8_t value, void* ctx) {
 // RadioLib's pinMode(cs, OUTPUT).
 void IndicatorRadioHal::pinMode(uint32_t pin, uint32_t mode) {
   if (!isExpanderPin(pin)) {
-    ArduinoHal::pinMode(pin, mode);
+    if (pin != RADIOLIB_NC) ::pinMode(pin, mode);
     return;
   }
   const uint8_t bit = expanderBit(pin);
@@ -121,7 +121,7 @@ void IndicatorRadioHal::pinMode(uint32_t pin, uint32_t mode) {
 
 void IndicatorRadioHal::digitalWrite(uint32_t pin, uint32_t value) {
   if (!isExpanderPin(pin)) {
-    ArduinoHal::digitalWrite(pin, value);
+    if (pin != RADIOLIB_NC) ::digitalWrite(pin, value);
     return;
   }
   const uint8_t bit = expanderBit(pin);
@@ -136,7 +136,7 @@ void IndicatorRadioHal::digitalWrite(uint32_t pin, uint32_t value) {
 // RadioLib waits on BUSY fires the callback from here, and the read that clears
 // /INT is never a lost edge.
 uint32_t IndicatorRadioHal::digitalRead(uint32_t pin) {
-  if (!isExpanderPin(pin)) return ArduinoHal::digitalRead(pin);
+  if (!isExpanderPin(pin)) return pin == RADIOLIB_NC ? 0 : ::digitalRead(pin);
   bool high = false;
   IndicatorIo::BusLock lock;
   if (!IndicatorIo::chip().readPin(expanderBit(pin), high)) return LOW;
@@ -148,7 +148,7 @@ uint32_t IndicatorRadioHal::digitalRead(uint32_t pin) {
 void IndicatorRadioHal::attachInterrupt(uint32_t interruptNum, void (*interruptCb)(void),
                                         uint32_t mode) {
   if (!isExpanderPin(interruptNum)) {
-    ArduinoHal::attachInterrupt(interruptNum, interruptCb, mode);
+    if (interruptNum != RADIOLIB_NC) ::attachInterrupt(interruptNum, interruptCb, mode);
     return;
   }
   if (expanderBit(interruptNum) != pins::kLoraDio1) return;
@@ -163,7 +163,7 @@ void IndicatorRadioHal::attachInterrupt(uint32_t interruptNum, void (*interruptC
 // level and a later re-arm with DIO1 already high is no edge.
 void IndicatorRadioHal::detachInterrupt(uint32_t interruptNum) {
   if (!isExpanderPin(interruptNum)) {
-    ArduinoHal::detachInterrupt(interruptNum);
+    if (interruptNum != RADIOLIB_NC) ::detachInterrupt(interruptNum);
     return;
   }
   if (expanderBit(interruptNum) != pins::kLoraDio1) return;
@@ -172,7 +172,7 @@ void IndicatorRadioHal::detachInterrupt(uint32_t interruptNum) {
 }
 
 uint32_t IndicatorRadioHal::pinToInterrupt(uint32_t pin) {
-  return isExpanderPin(pin) ? pin : ArduinoHal::pinToInterrupt(pin);
+  return isExpanderPin(pin) ? pin : digitalPinToInterrupt(pin);
 }
 
 void IndicatorRadioHal::startDispatch() {

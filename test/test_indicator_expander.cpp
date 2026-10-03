@@ -22,7 +22,7 @@ struct FakeBus : ExpanderBus {
   bool reads[8] = {};
   Write log[32] = {};
   size_t writes = 0;
-  bool fail_next_write = false;
+  int fail_write_at = 0;   // 0: never fail; N: the Nth write from now fails
 
   bool read(uint8_t reg, uint8_t* data, size_t n) override {
     for (size_t i = 0; i < n; ++i) {
@@ -33,7 +33,7 @@ struct FakeBus : ExpanderBus {
   }
 
   bool write(uint8_t reg, const uint8_t* data, size_t n) override {
-    if (fail_next_write) { fail_next_write = false; return false; }
+    if (fail_write_at > 0 && --fail_write_at == 0) return false;
     Write& w = log[writes++];
     w.reg = reg;
     w.n = n;
@@ -95,7 +95,7 @@ static void failed_write_rolls_back_shadow() {
   const uint8_t out0 = chip.output(0), out1 = chip.output(1);
   const uint8_t cfg0 = chip.config(0), cfg1 = chip.config(1);
 
-  bus.fail_next_write = true;
+  bus.fail_write_at = 1;
   assert(!chip.setOutput(pins::kLoraNss, false));
   assert(chip.output(0) == out0 && chip.output(1) == out1);
   assert(chip.config(0) == cfg0 && chip.config(1) == cfg1);
@@ -105,6 +105,32 @@ static void failed_write_rolls_back_shadow() {
   assert(bus.writes == 2);
   assert(bus.log[0].reg == 0x02 && bus.log[0].bytes[0] == (out0 | 0x10));
   assert(bus.log[1].reg == 0x06 && bus.log[1].bytes[0] == (cfg0 & (uint8_t)~0x10));
+}
+
+static void failed_config_write_rolls_back_both_shadows() {
+  FakeBus bus;
+  seedChip(bus, 0x01, 0x00, 0xFF, 0xFF);
+  Tca9535 chip(bus);
+  assert(chip.begin());
+  const uint8_t out0 = chip.output(0), out1 = chip.output(1);
+  const uint8_t cfg0 = chip.config(0), cfg1 = chip.config(1);
+
+  // The output write (0x02) lands, the config write (0x06) fails.
+  bus.fail_write_at = 2;
+  assert(!chip.setOutput(pins::kLcdReset, true));
+  assert(bus.writes == 1 && bus.log[0].reg == 0x02);
+  assert(chip.output(0) == out0 && chip.output(1) == out1);
+  assert(chip.config(0) == cfg0 && chip.config(1) == cfg1);
+
+  // The next write starts from the restored shadow: LCD RESET is not carried
+  // over from the half-applied call, and the chip's output latch is rewritten.
+  assert(chip.setOutput(pins::kLcdCs, true));
+  assert(bus.writes == 3);
+  assert(bus.log[1].reg == 0x02 && bus.log[1].bytes[0] == (out0 | 0x10));
+  assert(bus.log[1].bytes[1] == out1);
+  assert(bus.log[2].reg == 0x06 && bus.log[2].bytes[0] == (cfg0 & (uint8_t)~0x10));
+  assert(bus.log[2].bytes[1] == cfg1);
+  assert(bus.regs[0x02] == (out0 | 0x10));
 }
 
 static uint8_t s_seen = 0;
@@ -159,6 +185,7 @@ int main() {
   latch_before_direction();
   port1_untouched_except_written_pin();
   failed_write_rolls_back_shadow();
+  failed_config_write_rolls_back_both_shadows();
   port0_observer_sees_every_read();
   strap_majority_vote();
   printf("all indicator expander tests passed\n");
