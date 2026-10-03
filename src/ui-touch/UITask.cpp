@@ -29937,7 +29937,14 @@ static void makeHome(lv_obj_t* tab) {
   styleSurface(tab, COLOR_BG);
   lv_obj_set_style_pad_all(tab, 10, LV_PART_MAIN);
 
+#if defined(HAS_SENSECAP_INDICATOR)
+  // Square 480x480: chatLandscape() is false (hor == ver), but the home screen takes
+  // the landscape right-hand launcher column (see the square layout below). Home
+  // only; chat and the other screens keep chatLandscape().
+  const bool home_land = true;
+#else
   const bool home_land = chatLandscape();
+#endif
   s_home_nav_root = tab;
   s_home_nav_split = home_land;
   for (int i = 0; i < HOME_NAV_COUNT; ++i) s_home_nav_right[i] = nullptr;
@@ -29970,7 +29977,13 @@ static void makeHome(lv_obj_t* tab) {
   const int home_unread_y = pager_size ? home_state_y + home_line_h + 2 : 22;
   const int home_stats_y  = pager_size ? home_unread_y + home_line_h + 2 : 40;
 #else
+#if defined(HAS_SENSECAP_INDICATOR)
+  // 92/124/148 px at Normal/Large/Huge: wide enough for ">_  Terminal" at each size,
+  // narrow enough that the RAM/PSRAM line beside the column stays on one line at Huge.
+  const int BTNW_LABEL = SC(80) + 12;
+#else
   const int BTNW_LABEL = SC(100);
+#endif
   const int home_state_y  = SC(4);
   const int home_unread_y = SC(22);
   const int home_stats_y  = SC(40);
@@ -30121,7 +30134,7 @@ static void makeHome(lv_obj_t* tab) {
   lv_obj_set_ext_click_area(s_home_chart_legend, 8);
   lv_obj_add_event_cb(s_home_chart_legend, homeChartClickedCb, LV_EVENT_CLICKED, nullptr);
 
-#if defined(HAS_TDECK_GT911) || defined(HAS_TANMATSU) || defined(TLORA_PAGER) || defined(HAS_RAK_TAP_V2) || defined(HAS_THINKNODE_M9) || defined(HAS_WIO_TRACKER_L2) || defined(HAS_CROWPANEL_35) || defined(ATTAKY_MESH_SERIES) || defined(HAS_TDISPLAY_P4)
+#if defined(HAS_TDECK_GT911) || defined(HAS_TANMATSU) || defined(TLORA_PAGER) || defined(HAS_RAK_TAP_V2) || defined(HAS_THINKNODE_M9) || defined(HAS_WIO_TRACKER_L2) || defined(HAS_CROWPANEL_35) || defined(ATTAKY_MESH_SERIES) || defined(HAS_TDISPLAY_P4) || defined(HAS_SENSECAP_INDICATOR)
   // Landscape boards keep the chart clear of the right-hand button strip.
   const int chart_w = home_land ? (cw - RSTRIP) : cw;
 #else
@@ -30164,6 +30177,19 @@ static void makeHome(lv_obj_t* tab) {
   } else {
     chart_h = 96;
   }
+#elif defined(HAS_SENSECAP_INDICATOR)
+  // Square 480x480: the info card runs full width along the bottom, sized to its 8 rows,
+  // and the four launchers share the band above it with the status lines (and the chart
+  // at Normal). A card squeezed beside the column would clip the radio line from Large up.
+  // The tab is 460 x 392/383/377 inside its padding at Normal/Large/Huge.
+  chart_h = 96;
+  const int sq_info_ls = 3;
+  const int sq_card_h  = 16 + 8 * lv_font_get_line_height(&g_font_12) + 7 * sq_info_ls;
+  const int sq_card_y  = home_avail - sq_card_h - 4;
+  const int sq_band_h  = sq_card_y - 12;
+  const int tan_btn_gap = 8;
+  const int tan_btn_h   = (sq_band_h - 3 * tan_btn_gap) / 4;    // 4 buttons fill the band
+  if (chart_h > sq_band_h - chart_body_y) chart_h = sq_band_h - chart_body_y;
 #else
   // Big screen: spread the four right-column buttons evenly down the FULL height.
   chart_h = 96;
@@ -30278,6 +30304,9 @@ static void makeHome(lv_obj_t* tab) {
 #if defined(HAS_TDISPLAY_P4)
     const int info_y = p4_grid_bottom + 12;      // below the portrait launcher grid
     const int info_w = cw;                       // full width — no right button strip in portrait
+#elif defined(HAS_SENSECAP_INDICATOR)
+    const int info_y = sq_card_y;                // below the launcher band
+    const int info_w = cw;                       // full width
 #else
     const int info_y = chart_body_y + chart_h + 12;
     const int info_w = cw - RSTRIP;              // left/centre column, clear of the right button strip
@@ -30302,6 +30331,8 @@ static void makeHome(lv_obj_t* tab) {
     int p4_card_h = 16 + 8 * p4_info_fh + 7 * p4_info_ls;
     if (p4_card_h > p4_max_h) p4_card_h = p4_max_h;
     lv_obj_set_size(card, info_w, p4_card_h);
+#elif defined(HAS_SENSECAP_INDICATOR)
+    lv_obj_set_size(card, info_w, sq_card_h);
 #else
     lv_obj_set_size(card, info_w, home_avail - info_y - SC(8));   // small bottom margin so the last row (Uptime) clears
 #endif
@@ -30322,6 +30353,8 @@ static void makeHome(lv_obj_t* tab) {
     const lv_font_t* info_font = &g_font_12;
 #if defined(HAS_TDISPLAY_P4)
     const int info_ls = p4_info_ls;                       // fixed tight spacing (card is content-fit)
+#elif defined(HAS_SENSECAP_INDICATOR)
+    const int info_ls = sq_info_ls;                       // the card is sized to these rows
 #else
     const int info_card_h = home_avail - info_y - SC(8);
     const int info_fh     = lv_font_get_line_height(info_font);
