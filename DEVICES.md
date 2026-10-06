@@ -125,8 +125,8 @@ USB) and the [GitHub releases](https://github.com/ALLFATHER-BV/wadamesh/releases
   CrowPanel. Like Wio Tracker L2, it is included in the all-target builds and local beta release
   scripts, not the two-board stable CI workflow. Select it in the upload
   helper with `scripts/build-upload-monitor.sh --crowpanel-35`.
-- **SenseCAP Indicator D1L**: USB-powered, no battery (the UI shows a USB
-  glyph and hides Power off). The RP2040 peripherals (buzzer, microSD, Grove, D1Pro
+- **SenseCAP Indicator D1L**: USB-powered, no battery (the UI hides the battery
+  readouts, says "USB powered" and hides Power off). The RP2040 peripherals (buzzer, microSD, Grove, D1Pro
   sensors) are not used yet, and without storage there are no map tiles. The D1Pro
   shares the ESP32 side and is expected to run the same image, but is untested. See
   [variants/sensecap_indicator/PORT.md](variants/sensecap_indicator/PORT.md).

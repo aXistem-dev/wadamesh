@@ -8,7 +8,7 @@ sensecap_indicator_companion_radio_touch
 
 The SenseCAP Indicator D1L is an ESP32-S3 (8 MB flash, 8 MB octal PSRAM) with a 4-inch 480x480 RGB panel behind an ST7701S, an FT6336 capacitive touch controller and an SX1262. A TCA9535 I/O expander carries the radio chip select, reset, BUSY and DIO1 lines as well as the display chip select and reset and the touch reset and interrupt. A separate RP2040 co-processor owns the buzzer, microSD, Grove connector and (on the D1Pro) the sensors; this build does not use it. The D1Pro shares the ESP32 side of the board and is expected to run this image, but it is untested; the D1L is the reference target.
 
-The board is USB-powered and has no battery. `CAP_BATTERY` is 0, so the UI shows a USB glyph instead of a battery percentage and hides Power off.
+The board is USB-powered and has no battery. `CAP_BATTERY` is 0, so the status bar has no battery glyph and the Battery settings page (history, calibrate, battery saver) is hidden. `CAP_USB_POWER_ONLY` is 1, so the control centre and the home info card say "USB powered" and the board never counts as running on battery. Power off is hidden.
 
 ## Hardware
 
