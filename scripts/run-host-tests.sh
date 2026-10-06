@@ -24,6 +24,7 @@ extra_flags() {
   case "$1" in
     # Its subject is a board variant header, not shared src/.
     test_crowpanel_sd_codec) echo "-I variants/crowpanel_35" ;;
+    test_indicator_expander|test_indicator_dio1) echo "-I variants/sensecap_indicator" ;;
     *) echo "" ;;
   esac
 }
