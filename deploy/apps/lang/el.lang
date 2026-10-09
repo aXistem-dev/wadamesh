@@ -296,6 +296,7 @@ Enter SSID first	Εισαγάγετε πρώτα το SSID
 Enter a name	Εισαγάγετε όνομα
 Enter a network name	Εισαγάγετε όνομα δικτύου
 Enter a region name	Enter a region name
+Enter a rough location first	Εισαγάγετε πρώτα μια κατά προσέγγιση τοποθεσία
 Enter adds a new line	Το Enter προσθέτει γραμμή
 Enter exactly 32 hex characters.	Εισαγάγετε ακριβώς 32 hex χαρακτήρες.
 Enter key sends message	Το πλήκτρο Enter στέλνει το μήνυμα
@@ -498,6 +499,7 @@ Messages
 Min zoom for this pack	Ελάχ. ζουμ για αυτό το πακέτο
 Mode: BLE starting / low memory	Λειτουργία: BLE εκκινεί / λίγη μνήμη
 Model:	Μοντέλο:
+Move the map to your spot	Μετακινήστε τον χάρτη στο σημείο σας
 Multi ACKs	Πολλαπλά ACK
 Multi-ack %s · Repeat %s · RX boost %s	Multi-ack %s · Επανάλ. %s · RX boost %s
 Multi-byte routing (path hash)	Δρομολόγηση πολλών byte (hash διαδρομής)
@@ -608,6 +610,7 @@ Path reset failed	Αποτυχία επαναφοράς διαδρομής
 Paused  —  score %d	Σε παύση  —  σκορ %d
 Per-transmit switching on	Εναλλαγή ανά εκπομπή ενεργή
 Pick colour	Επιλογή χρώματος
+Pick on the map	Επιλογή στον χάρτη
 Ping	Ping
 Ping failed	Αποτυχία ping
 Pinged (direct) — waiting…	Ping (άμεσο) — αναμονή…
