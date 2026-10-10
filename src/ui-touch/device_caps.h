@@ -591,7 +591,7 @@
 #endif
 
 // Notification-chime hardware: T-Deck I2S speaker, Pager codec, Heltec V4 / M9 GPIO
-// piezo, T-Display P4 / T-Deck Max / Wio Tracker L2 ES8311. Kept in step with the HAS_UI_SOUND definition in
+// piezo, T-Display P4 / T-Deck Max / Wio Tracker L2 ES8311, SenseCAP Indicator buzzer (on its RP2040). Kept in step with the HAS_UI_SOUND definition in
 // UITask.cpp, which now derives FROM this rather than duplicating the list.
 //
 // This used to read `#if defined(HAS_UI_SOUND)`, but HAS_UI_SOUND is defined inside
@@ -602,7 +602,7 @@
 // compiler command line, so they are all genuinely visible at this point.
 #if defined(HAS_TDECK_GT911) || defined(HELTEC_V4_BUZZER_PIN) || defined(TLORA_PAGER) || \
     defined(THINKNODE_M9_BUZZER_PIN) || defined(HAS_TDISPLAY_P4) || defined(HAS_TDECK_MAX) || \
-    defined(HAS_WIO_TRACKER_L2)
+    defined(HAS_WIO_TRACKER_L2) || defined(HAS_SENSECAP_INDICATOR)
   #define CAP_SOUND 1
 #else
   #define CAP_SOUND 0

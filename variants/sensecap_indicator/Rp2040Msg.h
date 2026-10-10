@@ -2,7 +2,7 @@
 #pragma once
 
 // Messages of the SenseCAP Indicator's RP2040 bridge firmware, the subset the
-// ESP32 speaks over UART: ping/pong, nack, file transfer and SD card info. On
+// ESP32 speaks over UART: ping/pong, nack, file transfer, SD card info and beep. On
 // the wire they are the bridge's InterdeviceMessage (interdevice.proto),
 // coded with nanopb in Rp2040Codec.cpp; fields not modelled here are dropped on
 // decode. encode and decode share one message, allocated on first use (in PSRAM
@@ -64,8 +64,8 @@ struct SdInfo {
 };
 
 // Which member of the oneof the message carries. Other is any member not
-// modelled here (nmea, beep, i2c, listing, ...); None is no member at all.
-enum class Kind { None, Ping, Pong, Nack, File, GetSdInfo, SdInfo, Other };
+// modelled here (nmea, i2c, listing, ...); None is no member at all.
+enum class Kind { None, Ping, Pong, Nack, File, GetSdInfo, SdInfo, Beep, Other };
 
 struct Msg {
   Kind kind = Kind::None;
@@ -73,9 +73,10 @@ struct Msg {
   uint32_t version = 0;   // Ping, Pong
   FileTransfer file;      // File
   SdInfo sd;              // SdInfo
+  uint16_t beep_ms = 0;   // Beep: buzzer on for this long, 0 = off
 };
 
-// Writes the request m (Ping, File or GetSdInfo) to out and returns its length,
+// Writes the request m (Ping, File, GetSdInfo or Beep) to out and returns its length,
 // or 0 when it does not fit in cap, is of another kind, has a field out of
 // range (path or message without terminator, data_len over kMaxChunk, data
 // missing), or the shared message cannot be allocated.
