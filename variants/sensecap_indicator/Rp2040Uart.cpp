@@ -106,6 +106,13 @@ int Rp2040Uart::callMany(const rp2040::Msg* reqs, rp2040::Msg* resps, int n, int
   return s_core->callMany(reqs, resps, n, window, timeout_ms);
 }
 
+bool Rp2040Uart::post(const rp2040::Msg& req, uint32_t wait_ms) {
+  if (xSemaphoreTakeRecursive(linkMutex(), pdMS_TO_TICKS(wait_ms)) != pdTRUE) return false;
+  const bool ok = s_ready && s_core->post(req);
+  xSemaphoreGiveRecursive(linkMutex());
+  return ok;
+}
+
 uint32_t Rp2040Uart::helloCount() {
   Lock lock;
   return s_core ? s_core->helloCount() : 0;

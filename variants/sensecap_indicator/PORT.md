@@ -6,7 +6,7 @@ PlatformIO environment:
 sensecap_indicator_companion_radio_touch
 ```
 
-The SenseCAP Indicator D1L is an ESP32-S3 (8 MB flash, 8 MB octal PSRAM) with a 4-inch 480x480 RGB panel behind an ST7701S, an FT6336 capacitive touch controller and an SX1262. A TCA9535 I/O expander carries the radio chip select, reset, BUSY and DIO1 lines as well as the display chip select and reset and the touch reset and interrupt. A separate RP2040 co-processor owns the buzzer, microSD, Grove connector and (on the D1Pro) the sensors; this build uses only its microSD, for map tiles, through the RP2040's UART bridge firmware. The D1Pro shares the ESP32 side of the board and is expected to run this image, but it is untested; the D1L is the reference target.
+The SenseCAP Indicator D1L is an ESP32-S3 (8 MB flash, 8 MB octal PSRAM) with a 4-inch 480x480 RGB panel behind an ST7701S, an FT6336 capacitive touch controller and an SX1262. A TCA9535 I/O expander carries the radio chip select, reset, BUSY and DIO1 lines as well as the display chip select and reset and the touch reset and interrupt. A separate RP2040 co-processor owns the buzzer, microSD, Grove connector and (on the D1Pro) the sensors; this build uses its microSD, for map tiles, and its buzzer, for notification beeps, through the RP2040's UART bridge firmware. The D1Pro shares the ESP32 side of the board and is expected to run this image, but it is untested; the D1L is the reference target.
 
 The board is USB-powered and has no battery. `CAP_BATTERY` is 0, so the status bar has no battery glyph and the Battery settings page (history, calibrate, battery saver) is hidden. Power off is hidden.
 
@@ -125,6 +125,10 @@ Card changes: there is no card-detect line, so the UI loop polls the card info e
 
 Timing log: `[indicator] sd: tiles=<n> avg=<n>ms/tile` once a minute while the map tab is open on the card (UI-thread card time per tile read, misses included).
 
+## Buzzer (via the RP2040)
+
+The buzzer is wired to the RP2040 too. The bridge's `beep` message sounds it for a given number of milliseconds at one fixed pitch and gets no reply, so `indicatorBeep()` (`IndicatorBuzzer.h`) sends it without waiting for an answer. A map tile write holds the link for a whole file; a beep that cannot get the link within half a second is skipped. The notification sounds differ by count: one 70 ms beep for a message, two for a direct message, three for an @-mention. They follow the usual Sound settings (master switch, per-event switches, channel mutes, Do Not Disturb); "Loud alerts" is hidden, since the pitch cannot change, and so is the volume. Meshtastic's stock bridge firmware handles `beep` as well. Without a bridge nothing sounds.
+
 ## Flash layout and image size
 
 Partition table `variants/sensecap_indicator/partitions_sensecap_indicator.csv`, 8 MB:
@@ -142,7 +146,7 @@ The image takes about 3.4 MB (roughly 92 %) of the 3670016-byte (0x380000) app s
 
 ## Not in this port
 
-- RP2040 peripherals: the buzzer, the Grove I2C connector and the D1Pro sensors are not used.
+- RP2040 peripherals: the Grove I2C connector and the D1Pro sensors are not used.
 - The microSD carries map tiles only. The bridge has no rename, positioned write or directory listing, so the data store, the file manager, card formatting and the other SD features stay off; chat history, contacts and settings stay on internal flash.
 - Deep sleep and power off: nothing can wake the board, so Power off is hidden and deep sleep is not offered.
 - OTA release artifacts: this is a development target; no web-flasher or OTA release image is produced.
@@ -150,4 +154,4 @@ The image takes about 3.4 MB (roughly 92 %) of the 3670016-byte (0x380000) app s
 
 ## Validation status
 
-Exercised on a D1L: boot after a cold power-on, a reset and a reboot from the UI; colours and orientation; touch; the UI at Normal, Large and Huge; the Constellation screensaver and a radar widget on Home at 12 MHz; the user button; channel and direct messages sent and received with ACKs, including a two-hour direct-message soak with no reset; DM timestamps on the receiving node; the idle `/INT` wake rate; the RP2040 bridge at boot, offline map tiles from the microSD and the card pulled and put back while the map is open. Not yet exercised: the D1Pro, the first boot after Meshtastic or the Seeed stock firmware, every backlight level, the spectrum scan, the Wi-Fi tile cache writes and a long map session.
+Exercised on a D1L: boot after a cold power-on, a reset and a reboot from the UI; colours and orientation; touch; the UI at Normal, Large and Huge; the Constellation screensaver and a radar widget on Home at 12 MHz; the user button; channel and direct messages sent and received with ACKs, including a two-hour direct-message soak with no reset; DM timestamps on the receiving node; the idle `/INT` wake rate; the RP2040 bridge at boot, offline map tiles from the microSD and the card pulled and put back while the map is open; the beep patterns for a message, a direct message and an @-mention. Not yet exercised: the D1Pro, the first boot after Meshtastic or the Seeed stock firmware, every backlight level, the spectrum scan, the Wi-Fi tile cache writes and a long map session.

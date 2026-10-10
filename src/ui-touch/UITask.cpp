@@ -1986,6 +1986,32 @@ static void v4BuzzerBeep(bool mention) {
 }
 #endif
 
+#if defined(HAS_SENSECAP_INDICATOR)
+// SenseCAP Indicator: the buzzer sits on the RP2040, whose bridge only knows "beep
+// for N ms" at one pitch, so the events differ by count: message one beep, DM two,
+// @-mention three. A throwaway task keeps the gaps (and a map tile transfer holding
+// the bridge link for a moment) off the UI thread.
+#include <IndicatorBuzzer.h>
+static volatile bool s_ind_beep_playing = false;
+static volatile int  s_ind_beep_count   = 1;
+static void indBeepTaskFn(void*) {
+  for (int i = 0; i < s_ind_beep_count; ++i) {
+    if (i) vTaskDelay(pdMS_TO_TICKS(110));
+    indicatorBeep(70);
+    vTaskDelay(pdMS_TO_TICKS(70));
+  }
+  s_ind_beep_playing = false;
+  vTaskDelete(nullptr);
+}
+static void indPlayNotifySlot(int slot) {
+  if (s_ind_beep_playing) return;              // already beeping — don't stack tasks
+  s_ind_beep_count = slot == TOUCH_SND_MEN ? 3 : (slot == TOUCH_SND_DM ? 2 : 1);
+  s_ind_beep_playing = true;
+  if (xTaskCreate(indBeepTaskFn, "indbeep", 3072, nullptr, 3, nullptr) != pdPASS)
+    s_ind_beep_playing = false;
+}
+#endif
+
 #if defined(HAS_TANMATSU)
 static void tanBeep();   // I2S notification tick; defined far below (with the CC volume slider)
 #endif
@@ -2002,6 +2028,8 @@ static inline void uiPlaySlot(int slot) {
   pagerPlayNotifySlot(slot);
 #elif defined(HELTEC_V4_BUZZER_PIN) || defined(THINKNODE_M9_BUZZER_PIN)
   v4BuzzerBeep(slot == TOUCH_SND_MEN);   // mention = higher trill; msg/DM = the lower chime
+#elif defined(HAS_SENSECAP_INDICATOR)
+  indPlayNotifySlot(slot);               // RP2040 buzzer: 1 / 2 / 3 beeps
 #elif defined(HAS_TANMATSU)
   tanBeep();   // single codec tick on these boards (no per-slot sounds)
 #endif
@@ -12218,8 +12246,9 @@ static inline void uiSoundPreview() {
 // Message-sound switch (under the master Sound switch). VALUE_CHANGED; previews.
 // "Loud alerts": the piezo has no volume control, so this raises the chime's
 // pitch into its resonant band instead, where the same drive is much louder.
-// Buzzer boards only -- the Tanmatsu drives a codec and has real volume (#388).
-#if defined(HAS_UI_SOUND)
+// Buzzer boards only -- the Tanmatsu drives a codec and has real volume (#388). The
+// Indicator's bridge beeps at one pitch, so it has nothing to raise.
+#if defined(HAS_UI_SOUND) && !defined(HAS_SENSECAP_INDICATOR)
 static void toggleLoudAlertsCb(lv_event_t* e) {
   if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) return;
   const bool on = lv_obj_has_state(lv_event_get_target(e), LV_STATE_CHECKED);
@@ -17383,7 +17412,7 @@ static void buildSoundPage() {
   {
     lv_obj_t* c = setCard("Sound");
     setSwitchRow(c, "Sound", "Off silences everything below.", g_lv.task && !g_lv.task->isBuzzerQuiet(), toggleBuzzerCb);
-#if defined(HAS_UI_SOUND)
+#if defined(HAS_UI_SOUND) && !defined(HAS_SENSECAP_INDICATOR)
     setSwitchRow(c, "Loud alerts", "A higher-pitched chime, louder on most buzzers.",
 #if defined(ESP32)
                  touchPrefsGetLoudAlerts(),

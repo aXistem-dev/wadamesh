@@ -422,6 +422,25 @@ static void undecodable_frame_resyncs_inside() {
   assert(link.ping(v) && v == 2);
 }
 
+// post() sends one frame with a fresh id and returns without reading or
+// waiting, since the bridge never answers a beep; the next call still pairs.
+static void post_sends_without_waiting() {
+  FakeTransport t;
+  LinkCore link(t);
+  link.setNextId(5);
+  Msg beep = make(Kind::Beep, 0);
+  beep.beep_ms = 80;
+  uint32_t start = t.now;
+  assert(link.post(beep));
+  assert(t.now == start);
+  assert(t.requests.size() == 1);
+  assert(t.requests[0].kind == Kind::Beep && t.requests[0].beep_ms == 80 && t.requests[0].id == 5);
+  t.responder = [&](const Msg& m) { t.queue(pong(m.id, kVersion)); };
+  uint32_t v = 0;
+  assert(link.ping(v) && v == kVersion);
+  assert(t.requests[1].id == 6);
+}
+
 int main() {
   framer_resyncs_past_garbage_and_false_headers();
   framer_split_and_stalled_frames();
@@ -433,6 +452,7 @@ int main() {
   callmany_pairs_out_of_order_within_window();
   callmany_lost_reply_returns_prefix();
   undecodable_frame_resyncs_inside();
+  post_sends_without_waiting();
   printf("indicator rp2040 link: all tests passed\n");
   return 0;
 }

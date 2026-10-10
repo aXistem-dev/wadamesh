@@ -24,6 +24,9 @@ public:
             uint32_t timeout_ms = rp2040::kReplyTimeoutMs);
   int callMany(const rp2040::Msg* reqs, rp2040::Msg* resps, int n, int window = 3,
                uint32_t timeout_ms = rp2040::kReplyTimeoutMs);
+  // LinkCore::post under the link's mutex, waiting at most wait_ms for it;
+  // false when the link stays busy that long, or before a successful begin().
+  bool post(const rp2040::Msg& req, uint32_t wait_ms);
   uint32_t helloCount();
 
   // Holds the link's mutex; it is recursive, so calls inside are fine.

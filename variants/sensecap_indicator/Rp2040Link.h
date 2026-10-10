@@ -260,6 +260,10 @@ public:
     return done < limit ? done : limit;
   }
 
+  // Sends req (its id is replaced) without waiting: for a message the bridge
+  // does not answer, such as Beep. False when it does not encode or go out.
+  bool post(const Msg& req) { return send(req, takeId()); }
+
   // Unsolicited pings with id 0 seen so far: the bridge says it (re)started.
   uint32_t helloCount() const { return hellos_; }
 

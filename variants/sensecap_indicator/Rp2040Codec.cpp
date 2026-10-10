@@ -116,6 +116,10 @@ size_t encode(const Msg& m, uint8_t* out, size_t cap) {
       pb->which_data = meshtastic_InterdeviceMessage_file_transfer_tag;
       if (!toFile(m.file, pb->data.file_transfer)) return 0;
       break;
+    case Kind::Beep:
+      pb->which_data = meshtastic_InterdeviceMessage_beep_tag;
+      pb->data.beep = m.beep_ms;
+      break;
     default:
       return 0;
   }
@@ -160,7 +164,11 @@ bool decode(const uint8_t* in, size_t n, Msg& out) {
       out.kind = Kind::SdInfo;
       fromSd(pb->data.sd_info, out.sd);
       break;
-    default:   // nmea, beep, i2c_*, directory_listing, sd_command
+    case meshtastic_InterdeviceMessage_beep_tag:
+      out.kind = Kind::Beep;
+      out.beep_ms = pb->data.beep;
+      break;
+    default:   // nmea, i2c_*, directory_listing, sd_command
       out.kind = Kind::Other;
       break;
   }
