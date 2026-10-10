@@ -567,6 +567,8 @@ No earlier versions yet	Aucune version antérieure
 No internal storage: identity, channels and contacts can't be saved.	Pas de stockage interne : l'identité, les canaux et les contacts ne peuvent pas être enregistrés.
 No local expansion data	Aucune donnée d'extension locale
 No location for this contact	Aucune position pour ce contact
+No map storage.\n\nInsert a microSD card to\nshow offline maps and\ncache Wi-Fi tiles.	Pas de stockage carte.\n\nInsérez une carte microSD pour\nles cartes hors ligne et\nles tuiles Wi-Fi.
+No map storage.\n\nThe RP2040 firmware has no\nmicroSD bridge. Update it\nto use the card.	Pas de stockage carte.\n\nLe firmware du RP2040 n'a pas\nde pont microSD. Mettez-le à jour\npour utiliser la carte.
 No map storage.\n\nInsert an SD card to cache\nWi-Fi tiles (or reflash to\nrestore the tiles partition).	Pas de stockage carte.\n\nInsérez une carte SD pour les\ntuiles Wi-Fi (ou reflashez pour\nrestaurer la partition des tuiles).
 No map storage on this board.\n\nIt has no tiles partition and\nno microSD the map can use.	Pas de stockage de carte ici.\n\nCet appareil n'a ni partition de\ntuiles ni microSD pour la carte.
 No map tiles here.\n\nConnect to Wi-Fi (Settings → Wi-Fi)\nto download this area.	Aucune tuile ici.\n\nConnectez-vous au Wi-Fi (Réglages → Wi-Fi)\npour télécharger cette zone.

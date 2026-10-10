@@ -117,7 +117,6 @@
   #define CAP_FILESYSTEM   1
   #define CAP_GPS          0
   #define CAP_OTA          0   // one factory app slot, no in-place update
-  #define CAP_TILE_STORAGE 0   // no tiles partition and no card the map can use (#692)
   #define CAP_LOCK_SCREEN  0
   #define CAP_BATTERY      0   // no battery fitted
 
@@ -329,6 +328,14 @@
   #define CAP_TILES_ON_STORAGE 1
 #else
   #define CAP_TILES_ON_STORAGE 0
+#endif
+
+// A microSD card the map can read tiles from and cache Wi-Fi tiles to: the
+// boards above, and the SenseCAP Indicator, whose card sits behind its RP2040.
+#if CAP_MICROSD || defined(HAS_SENSECAP_INDICATOR)
+  #define CAP_MAP_SD 1
+#else
+  #define CAP_MAP_SD 0
 #endif
 
 // Persisted, restart-to-apply UI-size selector. Large-screen boards already
