@@ -17090,7 +17090,12 @@ static void buildDisplayPage() {
                  ss_on, ssaverToggleCb);
     char t[16];
     ssaverBattFormat(ss_batt / 5u * 5u, t, sizeof t);
+#if CAP_USB_POWER_ONLY
+    // No battery: with "Always on" below off, this is how long it shows before going dark.
+    s_ssaver_rows.batt = setSliderRow(c, "Show it for", t, 0, 12, ss_batt / 5,
+#else
     s_ssaver_rows.batt = setSliderRow(c, "On battery, show it for", t, 0, 12, ss_batt / 5,
+#endif
                                       ssaverBattChangedCb, ssaverBattReleasedCb, TR("Off"), "1 min",
                                       &s_ssaver_batt_value);
     s_ssaver_rows.pwr = setSwitchRow(c, "Always on when connected to power", nullptr, ss_pwr, ssaverPowerToggleCb);
@@ -52065,12 +52070,17 @@ static void openControlCenter() {
   const uint16_t mv = batteryMvSmoothed();
   const int pct = batteryPercentFromMv(mv);
   char batt_s[28];
+#if CAP_USB_POWER_ONLY
+  (void)pct;
+  snprintf(batt_s, sizeof batt_s, "%s", TR("USB powered"));   // no battery: no % or voltage
+#else
   if (batteryIsCharging(mv))
     snprintf(batt_s, sizeof batt_s, "%s  %u.%02uV", TR("Charging"),
              (unsigned)(mv / 1000), (unsigned)((mv % 1000) / 10));
   else
     snprintf(batt_s, sizeof batt_s, "%d%%  %u.%02uV",
              pct < 0 ? 0 : pct, (unsigned)(mv / 1000), (unsigned)((mv % 1000) / 10));
+#endif
   char winfo[40] = "Wi-Fi off";
 #if defined(ESP32)
   if (WiFi.status() == WL_CONNECTED)
@@ -55348,7 +55358,13 @@ static bool tsWifiOff() {
 static bool tsBleOff()     { return true; }   // Bluetooth on is fine (see tsWifiOff); a connected app is a client
 // tsOnBattery: true when NOT charging (mirrors the charging bool in updateGlobalStatusBar
 // — batteryIsCharging(batteryMvSmoothed())).
-static bool tsOnBattery()  { return !batteryIsCharging(batteryMvSmoothed()); }
+static bool tsOnBattery()  {
+#if CAP_USB_POWER_ONLY
+  return false;   // no battery: always on USB power
+#else
+  return !batteryIsCharging(batteryMvSmoothed());
+#endif
+}
 // tsMeshIdle: true when the radio is NOT mid-receive (preamble→RxDone race guarded),
 // AND no outbound packet / retry / contact write is due now. Future retry and
 // write deadlines are allowed to use the timed idle-power-saving path.

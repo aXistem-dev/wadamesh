@@ -59,6 +59,7 @@
   #define CAP_OTA          0   // no release artifact until the maintainer ships the board
   #define CAP_LOCK_SCREEN  0
   #define CAP_BATTERY      0   // no battery fitted
+  #define CAP_USB_POWER_ONLY 1 // runs from USB only
 
 #elif defined(HAS_WIO_TRACKER_L2)        // ===== Seeed Wio Tracker L2 (ESP32-S3) =====
   #define CAP_TOUCH        1
@@ -208,6 +209,12 @@
 // Boards without a battery ADC must not advertise battery history/calibration.
 #ifndef CAP_BATTERY
   #define CAP_BATTERY 1
+#endif
+// Boards with no battery at all, not merely no battery sensing (implies
+// CAP_BATTERY 0): power readouts say "USB powered" and the board never counts
+// as running on battery.
+#ifndef CAP_USB_POWER_ONLY
+  #define CAP_USB_POWER_ONLY 0
 #endif
 
 // Physical removable microSD slot, independent of the filesystem API used to
