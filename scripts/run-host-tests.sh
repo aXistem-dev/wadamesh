@@ -30,7 +30,7 @@ extra_flags() {
     test_c6_link_health) echo "-I tdisplay_p4/components/c6_at" ;;
     # The T-LoRa Pager chip drivers, compiled from variants/ against fake chips.
     test_pager_power|test_pager_haptics|test_pager_imu) echo "-I test/pager_hw_fakes" ;;
-    test_indicator_expander|test_indicator_dio1) echo "-I variants/sensecap_indicator" ;;
+    test_indicator_*) echo "-I variants/sensecap_indicator" ;;
     # The reader is a .cpp of its own; tinfl comes from the web build's miniz.
     test_pmtiles) echo "-I src/ui-touch -I web/third_party/miniz src/ui-touch/PmTiles.cpp web/third_party/miniz/miniz_tinfl.c" ;;
     test_emoji_deflated) echo "-I test/emoji_fakes -I $OUT/gen -I src/ui-touch" ;;
