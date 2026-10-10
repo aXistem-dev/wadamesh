@@ -194,6 +194,7 @@ static_assert(ChannelSenderSplit::kMaxWireName >= (size_t)UITask::MAX_SENDER_NAM
     #include <helpers/ui/ST7796LCDDisplay.h>
   #elif defined(HAS_SENSECAP_INDICATOR)
     #include <IndicatorDisplay.h>
+    #include <IndicatorSdFs.h>               // map tiles on the RP2040's microSD
   #elif defined(HAS_WIO_TRACKER_L2)
     #include <WioTrackerL2Display.h>
     #include <WioTrackerL2Io.h>
@@ -7756,7 +7757,7 @@ static void renderMapTiles();
 static void renderMapMarkers();
 static void freeMapTiles();
 static void mapNoteStorageChanged();   // tile storage appeared/vanished: adopt, invalidate, re-render
-#if CAP_MICROSD && !CAP_SD
+#if (CAP_MICROSD && !CAP_SD) || defined(HAS_SENSECAP_INDICATOR)
 static volatile bool s_map_sd_storage_changed = false;   // defer SD_MMC backend swaps out of active file I/O
 #endif
 // Single entry point used by tabChangedCb. Recenters on self GPS and
@@ -32136,10 +32137,14 @@ static size_t  internalTransferFsFree() {
 // so the core-0 fetch task and the core-1 render thread can't corrupt the SD.
 static fs::FS*        s_tile_fs   = nullptr;
 static char           s_tile_root[16] = "";
-#if CAP_MICROSD
+#if CAP_MAP_SD
+// SenseCAP Indicator: the card sits behind the RP2040 (IndicatorSdFs). It is
+// used for map tiles only; nothing else of the SD support is enabled there.
 static fs::FS* mapSdStorage() {
 #if CAP_SD
   return &SD;
+#elif defined(HAS_SENSECAP_INDICATOR)
+  return &indicatorSd;
 #else
   return &SD_MMC;
 #endif
@@ -32148,6 +32153,8 @@ static fs::FS* mapSdStorage() {
 static bool mapSdStorageMounted() {
 #if CAP_SD
   return s_sd_mounted && SD.cardType() != CARD_NONE;
+#elif defined(HAS_SENSECAP_INDICATOR)
+  return indicatorSdReady();   // the last card info; no I/O
 #else
   return s_tan_sd_mounted && SD_MMC.cardType() != CARD_NONE;
 #endif
@@ -32156,6 +32163,8 @@ static bool mapSdStorageMounted() {
 static bool mapSdStorageReady() {
 #if CAP_SD
   return sdAdoptLiveMount() || fmSdTryMount();
+#elif defined(HAS_SENSECAP_INDICATOR)
+  return indicatorSdReady();   // the RP2040 mounts the card itself
 #else
   return tanSdTryMount();
 #endif
@@ -32164,6 +32173,8 @@ static bool mapSdStorageReady() {
 static bool mapSdReadBlocked() {
 #if CAP_SD
   return s_sd_fail_note_ms != 0;
+#elif defined(HAS_SENSECAP_INDICATOR)
+  return indicatorSdReadBlocked();
 #else
   return !s_tan_sd_mounted && millis() < s_tan_sd_retry_after;
 #endif
@@ -32172,6 +32183,9 @@ static bool mapSdReadBlocked() {
 static void mapSdReadFailed() {
 #if CAP_SD
   sdReadFailedCardDead();
+#elif defined(HAS_SENSECAP_INDICATOR)
+  // Nothing to probe: IndicatorSdFs tells a missing tile from a failing link
+  // itself, and the card info is polled every 5 s while the map uses the card.
 #else
   tanSdProbeAlive(true);
 #endif
@@ -32180,6 +32194,8 @@ static void mapSdReadFailed() {
 static void mapSdWriteFailed() {
 #if CAP_SD
   sdNoteIoFailure();
+#elif defined(HAS_SENSECAP_INDICATOR)
+  indicatorSdPollSoon();   // worker task: only asks for a card check
 #else
   s_map_sd_storage_changed = true;
 #endif
@@ -34130,6 +34146,16 @@ static void tileFetchTaskFn(void* arg) {
     }
 
     ensureTilesDirPath(req.z, req.x, froot);
+#if defined(HAS_SENSECAP_INDICATOR)
+    // The first mkdir shows a bridge without MKDIR: the card cannot cache this
+    // tile, so do not download it (queueTileForFetch stops queueing too).
+    if (s_tile_fs == &indicatorSd && !indicatorSdWritable()) {
+      s_tile_fetch_last_wr = 'O';
+      ++s_tile_fetch_failed;
+      tileFetchPendingDec();
+      continue;
+    }
+#endif
 
     char base[TOUCH_TILE_SERVER_MAXLEN];
     touchPrefsGetTileServer(base, sizeof(base));
@@ -34238,7 +34264,7 @@ static void tileFetchTaskFn(void* arg) {
             } else {
               ++s_tile_fetch_short_wr;
               s_tile_fetch_last_wr = 'P';            // short/failed disk write (card full or SD error)
-#if CAP_MICROSD
+#if CAP_MAP_SD
               if (s_tile_fs == mapSdStorage()) mapSdWriteFailed();   // wedge tell (worker task — stamp only)
 #endif
             }
@@ -34246,7 +34272,7 @@ static void tileFetchTaskFn(void* arg) {
         } else {
           ++s_tile_fetch_open_fail;
           s_tile_fetch_last_wr = 'O';                // open("w") failed: dir missing / write-protect / SD bus
-#if CAP_MICROSD
+#if CAP_MAP_SD
           if (s_tile_fs == mapSdStorage()) mapSdWriteFailed();       // wedge tell (worker task — stamp only)
 #endif
         }
@@ -34422,6 +34448,13 @@ static void queueTileForFetch(uint8_t z, int32_t x, int32_t y) {
   // no SD packs exist there, so microSD-tile mode can only mean "don't fetch".
 #if CAP_MICROSD
   if (!s_tiles_fs_ready || !s_tile_fs) return;
+#elif defined(HAS_SENSECAP_INDICATOR)
+  // With the RP2040 bridge the card works as on the microSD boards above,
+  // except that a bridge without MKDIR (stock firmware) cannot cache, so
+  // nothing is fetched for it. Without the bridge there is no tile store at
+  // all, so nothing is fetched either.
+  if (!indicatorSdAvailable() || !s_tiles_fs_ready || !s_tile_fs) return;
+  if (s_tile_fs == &indicatorSd && !indicatorSdWritable()) return;
 #else
   if (s_map_style == 0 && s_tiles_from_sd) return;
 #endif
@@ -34566,7 +34599,7 @@ static bool loadTileJpeg(uint8_t z, int32_t x, int32_t y,
   char path[48];
   snprintf(path, sizeof(path), "%s/%u/%ld/%ld.jpg",
            mapTileRoot(), (unsigned)z, (long)x, (long)y);
-#if CAP_MICROSD
+#if CAP_MAP_SD
   fs::FS* map_sd = mapSdStorage();
   if (s_tiles_from_sd && s_tile_fs == map_sd && s_map_style == 0) {   // SD packs are OSM-only; topo uses the online /tiles/topo cache
     // Tile source = microSD: read straight off the card (fully offline, no server fetch).
@@ -34655,14 +34688,14 @@ static bool loadTileJpeg(uint8_t z, int32_t x, int32_t y,
   // re-downloaded forever and rendered nothing (#tiles). open() is the real existence test; read up to
   // the 100 KB writer cap and use the ACTUAL bytes read. (S3 boards: f.size() works there, but this is
   // equally correct — a transient 100 KB PSRAM buffer per tile, freed right after decode.)
-#if CAP_MICROSD
+#if CAP_MAP_SD
   // A removable-card cache uses the same dead-card short-circuit as the
   // explicit offline-pack path above, regardless of SPI or SDMMC transport.
   if (s_tile_fs == mapSdStorage() && mapSdReadBlocked()) return false;
 #endif
   File f = tileCacheOpen(path, "r");
   if (!f) {
-#if CAP_MICROSD
+#if CAP_MAP_SD
     if (s_tile_fs == mapSdStorage()) mapSdReadFailed();
 #endif
     return false;
@@ -34720,7 +34753,7 @@ static void freeMapTiles() {
 //     outage are retried instead of being remembered as in-flight forever
 //   * re-renders immediately when the map is the visible tab
 static void mapNoteStorageChanged() {
-#if CAP_MICROSD
+#if CAP_MAP_SD
   // A fetch snapshots its paths but still dereferences the global backend for
   // every filesystem operation of the request, so the pointer may only move at
   // a worker request boundary. The ownership handshake pauses dequeueing there;
@@ -34779,7 +34812,7 @@ static void mapNoteStorageChanged() {
   for (int i = 0; i < k_tile_fetch_dedup_size; ++i) s_tile_fetch_dedup[i] = 0;
   s_tile_fetch_dedup_head = 0;
   freeMapTiles();
-#if CAP_MICROSD
+#if CAP_MAP_SD
   // Drop the stale tiles above either way, but do not paint through a pointer
   // we already know is wrong — that would probe &SD for a card that is gone and
   // pay a full SPI timeout per tile on the loop task. Only skip when a swap was
@@ -34790,10 +34823,28 @@ static void mapNoteStorageChanged() {
   if (g_lv.tabview && lv_tabview_get_tab_act(g_lv.tabview) == MAP_TAB_INDEX) renderMapTiles();
 }
 
+#if defined(HAS_SENSECAP_INDICATOR)
+// The card behind the RP2040 has no card-detect line: while the map uses it
+// (or would adopt one), poll its info every 5 s and re-check the tile source on
+// a change. Also retries a deferred backend swap, and tiles that a passing link
+// failure left blank. Loop task only; no call here waits more than ~250 ms.
+static void indicatorMapSdTick(uint32_t now) {
+  const bool map_on_sd = s_tile_fs == &indicatorSd || s_tiles_from_sd || !s_tiles_fs_ready;
+  if (map_on_sd) indicatorSdPoll(now);
+  if (indicatorSdTakeChange() || s_map_sd_storage_changed) mapNoteStorageChanged();
+#if defined(MULTI_TRANSPORT_COMPANION)
+  if (indicatorSdTakeRetry() && s_map_last_missing > 0) s_tile_fetch_dirty = true;
+#endif
+  if (s_tile_fs == &indicatorSd && g_lv.tabview &&
+      lv_tabview_get_tab_act(g_lv.tabview) == MAP_TAB_INDEX)
+    indicatorSdLogStats(now);
+}
+#endif
+
 #if defined(ESP32)
 // Is *some* tile source available to probe at all? (SD pack or LittleFS /tiles.)
 static bool mapTileSourceReady() {
-#if CAP_MICROSD
+#if CAP_MAP_SD
   // Mirror loadTileJpeg's source selection: SD packs are OSM-only, so topo
   // reads the generic /tiles/topo cache and its readiness is s_tiles_fs_ready.
   if (s_tiles_from_sd && s_tile_fs == mapSdStorage() && s_map_style == 0)
@@ -34807,7 +34858,7 @@ static bool mapTileSourceReady() {
 // online cache), so an SD /maps/osm offline pack was invisible to zoom — the loader
 // drew its tiles but the buttons reported "Max/Min zoom for this pack" offline.
 static bool tileExistsAt(uint8_t z, long x, long y) {
-#if CAP_MICROSD
+#if CAP_MAP_SD
   fs::FS* map_sd = mapSdStorage();
   if (s_tiles_from_sd && s_tile_fs == map_sd && s_map_style == 0) {   // topo isn't on SD packs — probe the online cache below
     if (mapSdReadBlocked()) return false;   // card suspected dead — skip the five per-tile probes (sdHealthTick arbitrates)
@@ -35183,7 +35234,7 @@ static void renderMapTiles() {
   }
 
 #if defined(ESP32)
-#if CAP_MICROSD
+#if CAP_MAP_SD
   // s_map_style == 0: SD packs are OSM-only. In topo the loader reads the
   // online /tiles/topo cache, so pointing the user at /maps/osm would be wrong
   // and would hide the download progress/diagnostics below.
@@ -35207,6 +35258,14 @@ static void renderMapTiles() {
     else
       lv_label_set_text(s_map_status_lbl,
           TR("No map storage.\n\nInsert an SD card to cache\nWi-Fi tiles (or reflash to\nrestore the tiles partition)."));
+#elif defined(HAS_SENSECAP_INDICATOR)
+    // No tiles partition: the RP2040's microSD is the only tile storage.
+    if (indicatorSdAvailable())
+      lv_label_set_text(s_map_status_lbl,
+          TR("No map storage.\n\nInsert a microSD card to\nshow offline maps and\ncache Wi-Fi tiles."));
+    else
+      lv_label_set_text(s_map_status_lbl,
+          TR("No map storage.\n\nThe RP2040 firmware has no\nmicroSD bridge. Update it\nto use the card."));
 #elif defined(HAS_TANMATSU)
     // Tanmatsu has no tiles partition by design (see the FFat fallback in begin()).
     // Never tell the user to "reflash the partition" — the map runs network-only.
@@ -35237,7 +35296,7 @@ static void renderMapTiles() {
         "ok %u   fail %u   http %d   wr %c\n"
         "open-fail %u   short-wr %u\n\n"
         "Keep Wi-Fi connected.\nTiles appear as they arrive.",
-#if CAP_MICROSD
+#if CAP_MAP_SD
   (s_tile_fs == mapSdStorage() ? "SD cache" : "flash cache"),
 #else
         (s_tile_root[0] ? "SD cache" : "flash cache"),
@@ -36391,7 +36450,7 @@ static void mapOptZoomButtonsCb(lv_event_t* e) {
   mapZoomControlsApply();
 }
 
-#if CAP_MICROSD
+#if CAP_MAP_SD
 // Map tile source toggle (in the map options popup): ON = tiles live on the microSD
 // card — read the user's SD library AND cache Wi-Fi-fetched gaps there (#20), so the
 // library grows and downloads survive; OFF = tile server + internal LittleFS cache.
@@ -36644,9 +36703,12 @@ static void openMapOptions() {
   lv_obj_set_pos(title, 0, 0);
   int y = 26;
 
-#if CAP_MICROSD
+#if CAP_MAP_SD
   // Row: tile source — microSD (offline) vs the tile server. The important one,
   // so it sits at the very top.
+#if defined(HAS_SENSECAP_INDICATOR)
+  if (indicatorSdAvailable())   // no row without the RP2040 bridge
+#endif
   {
     lv_obj_t* tl = lv_label_create(card);
     lv_label_set_text(tl, TR("Tiles from SD card"));
@@ -71320,6 +71382,18 @@ void UITask::begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* no
     WIRE_DBG("[TILE] wio-l2: caching Wi-Fi tiles on SD_MMC /tiles\n");
   }
 #endif
+#if defined(HAS_SENSECAP_INDICATOR)
+  // No "tiles" partition on this board: the microSD behind the RP2040 is the
+  // tile cache (card ROOT /tiles, beside any /maps/osm pack) when its bridge
+  // answered at boot and a card is in. A card that comes later is adopted by
+  // indicatorMapSdTick + mapNoteStorageChanged.
+  else if (indicatorSdReady()) {
+    s_tile_fs = &indicatorSd;
+    s_tile_root[0] = '\0';
+    s_tiles_fs_ready = true;
+    printf("[TILE] caching Wi-Fi tiles on the RP2040 microSD /tiles\n");
+  }
+#endif
 #if !defined(HAS_TDISPLAY_P4) && !defined(HAS_WIO_TRACKER_L2)
   else {
     s_tile_fs = nullptr;   // no cache backend at all -> map shows the storage notice
@@ -71332,7 +71406,7 @@ void UITask::begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* no
   // mirrors this when the toggle flips at runtime.
   s_tile_fs_default = s_tile_fs;
   strncpy(s_tile_root_default, s_tile_root, sizeof s_tile_root_default - 1);
-#if CAP_MICROSD
+#if CAP_MAP_SD
   if (s_tiles_from_sd && mapSdStorageReady()) {
     s_tile_fs = mapSdStorage();
     s_tile_root[0] = '\0';
@@ -76942,6 +77016,9 @@ void UITask::loop() {
     if (s_tan_sd_mounted) tanSdProbeAlive(true);
     mapNoteStorageChanged();
   }
+#endif
+#if defined(HAS_SENSECAP_INDICATOR)
+  indicatorMapSdTick((uint32_t)now);
 #endif
 #if CAP_SD || defined(TLORA_PAGER)
   sdHealthTick();   // wedge detect + remount, driven by writer-flagged failures (any task)

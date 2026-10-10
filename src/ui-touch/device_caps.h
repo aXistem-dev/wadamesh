@@ -219,6 +219,14 @@
   #define CAP_MICROSD 0
 #endif
 
+// A microSD card the map can read tiles from and cache Wi-Fi tiles to: the
+// boards above, and the SenseCAP Indicator, whose card sits behind its RP2040.
+#if CAP_MICROSD || defined(HAS_SENSECAP_INDICATOR)
+  #define CAP_MAP_SD 1
+#else
+  #define CAP_MAP_SD 0
+#endif
+
 // Persisted, restart-to-apply UI-size selector. Large-screen boards already
 // expose it; the Pager, V4-R8, ThinkNode M9, T-Deck and T-Deck Pro / Max add
 // font-only presets because their compact viewports cannot safely take global

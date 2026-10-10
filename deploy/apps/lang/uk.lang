@@ -565,6 +565,8 @@ No discovered nodes yet.\n\nAnything heard over the air that isn't in your conta
 No earlier versions yet	Ранніх версій ще немає
 No local expansion data	Немає локальних даних розширення
 No location for this contact	Немає розташування для цього контакту
+No map storage.\n\nInsert a microSD card to\nshow offline maps and\ncache Wi-Fi tiles.	Немає сховища карти.\n\nВставте картку microSD для\nофлайн-карт і кешу\nWi-Fi плиток.
+No map storage.\n\nThe RP2040 firmware has no\nmicroSD bridge. Update it\nto use the card.	Немає сховища карти.\n\nПрошивка RP2040 не має\nmicroSD-мосту. Оновіть її,\nщоб використати картку.
 No map storage.\n\nInsert an SD card to cache\nWi-Fi tiles (or reflash to\nrestore the tiles partition).	Немає сховища карти.\n\nВставте SD-картку для кешу\nWi-Fi плиток (або перепрошийте\nдля розділу tiles).
 No map tiles here.\n\nConnect to Wi-Fi (Settings → Wi-Fi)\nto download this area.	Тут немає плиток карти.\n\nПідключіться до Wi-Fi (Налаштування → Wi-Fi),\nщоб завантажити цю ділянку.
 No mapped repeaters in this route	Немає нанесених ретрансляторів на цьому маршруті

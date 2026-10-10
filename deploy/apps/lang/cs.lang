@@ -562,6 +562,8 @@ No discovered nodes yet.\n\nAnything heard over the air that isn't in your conta
 No earlier versions yet	Zatím žádné starší verze
 No local expansion data	Žádná lokální data rozšíření
 No location for this contact	Pro tento kontakt není žádná poloha
+No map storage.\n\nInsert a microSD card to\nshow offline maps and\ncache Wi-Fi tiles.	Žádné úložiště map.\n\nVložte kartu microSD pro\noffline mapy a ukládání\nWi-Fi dlaždic.
+No map storage.\n\nThe RP2040 firmware has no\nmicroSD bridge. Update it\nto use the card.	Žádné úložiště map.\n\nFirmware RP2040 nemá\nmost pro microSD. Aktualizujte\nho pro použití karty.
 No map storage.\n\nInsert an SD card to cache\nWi-Fi tiles (or reflash to\nrestore the tiles partition).	Žádné úložiště map.\n\nVložte SD kartu pro ukládání\nWi-Fi dlaždic (nebo znovu nahrajte\noddíl dlaždic).
 No map tiles here.\n\nConnect to Wi-Fi (Settings → Wi-Fi)\nto download this area.	Zde nejsou žádné mapové dlaždice.\n\nPřipojte se k Wi-Fi (Nastavení → Wi-Fi)\npro stažení této oblasti.
 No mapped repeaters in this route	Na této trase nejsou žádné zmapované opakovače

@@ -571,6 +571,8 @@ No discovered nodes yet.\n\nAnything heard over the air that isn't in your conta
 No earlier versions yet	Még nincsenek korábbi verziók
 No local expansion data	Nincsenek helyi bővítési adatok
 No location for this contact	Nincs hely ehhez a névjegyhez
+No map storage.\n\nInsert a microSD card to\nshow offline maps and\ncache Wi-Fi tiles.	Nincs térképtárhely.\n\nHelyezzen be egy microSD-kártyát\naz offline térképekhez és a\nWi-Fi csempék tárolásához.
+No map storage.\n\nThe RP2040 firmware has no\nmicroSD bridge. Update it\nto use the card.	Nincs térképtárhely.\n\nAz RP2040 firmware-ében nincs\nmicroSD-híd. Frissítse a\nkártya használatához.
 No map storage.\n\nInsert an SD card to cache\nWi-Fi tiles (or reflash to\nrestore the tiles partition).	Nincs térképtárhely.\n\nHelyezzen be egy SD-kártyát a Wi-Fi csempék gyorsítótárazásához (vagy flashelje újra a csempék partíciójának visszaállításához).
 No map tiles here.\n\nConnect to Wi-Fi (Settings → Wi-Fi)\nto download this area.	Nincsenek térképszeletek itt.\n\nCsatlakozzon Wi-Fi-hez (Beállítások → Wi-Fi)\na terület letöltéséhez.
 No mapped repeaters in this route	Nincsenek leképezett ismétlők ezen az útvonalon

@@ -565,6 +565,8 @@ No discovered nodes yet.\n\nAnything heard over the air that isn't in your conta
 No earlier versions yet	Все още няма по-ранни версии
 No local expansion data	Няма локални данни за разширение
 No location for this contact	Няма местоположение за този контакт
+No map storage.\n\nInsert a microSD card to\nshow offline maps and\ncache Wi-Fi tiles.	Няма хранилище за карта.\n\nПоставете microSD карта за\nофлайн карти и кеш на\nWi-Fi плочки.
+No map storage.\n\nThe RP2040 firmware has no\nmicroSD bridge. Update it\nto use the card.	Няма хранилище за карта.\n\nФърмуерът на RP2040 няма\nmicroSD мост. Обновете го,\nза да ползвате картата.
 No map storage.\n\nInsert an SD card to cache\nWi-Fi tiles (or reflash to\nrestore the tiles partition).	Няма хранилище за карта.\n\nПоставете SD карта за кеш на\nWi-Fi плочки (или префлашнете за\nдяла tiles).
 No map tiles here.\n\nConnect to Wi-Fi (Settings → Wi-Fi)\nto download this area.	Тук няма плочки на картата.\n\nСвържете се с Wi-Fi (Настройки → Wi-Fi),\nза да изтеглите този район.
 No mapped repeaters in this route	Няма картографирани ретранслатори по този маршрут

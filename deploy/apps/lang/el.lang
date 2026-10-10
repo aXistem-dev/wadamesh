@@ -565,6 +565,8 @@ No discovered nodes yet.\n\nAnything heard over the air that isn't in your conta
 No earlier versions yet	Δεν υπάρχουν προηγούμενες εκδόσεις
 No local expansion data	Δεν υπάρχουν τοπικά δεδομένα επέκτασης
 No location for this contact	Καμία τοποθεσία για αυτήν την επαφή
+No map storage.\n\nInsert a microSD card to\nshow offline maps and\ncache Wi-Fi tiles.	Χωρίς αποθήκευση χάρτη.\n\nΕισαγάγετε κάρτα microSD για\nχάρτες εκτός σύνδεσης και\nπλακίδια Wi-Fi.
+No map storage.\n\nThe RP2040 firmware has no\nmicroSD bridge. Update it\nto use the card.	Χωρίς αποθήκευση χάρτη.\n\nΤο firmware του RP2040 δεν έχει\nγέφυρα microSD. Ενημερώστε το\nγια χρήση της κάρτας.
 No map storage.\n\nInsert an SD card to cache\nWi-Fi tiles (or reflash to\nrestore the tiles partition).	Χωρίς αποθήκευση χάρτη.\n\nΕισαγάγετε κάρτα SD για πλακίδια\nWi-Fi (ή ξαναφλασάρετε για\nτο tiles partition).
 No map tiles here.\n\nConnect to Wi-Fi (Settings → Wi-Fi)\nto download this area.	Δεν υπάρχουν πλακίδια εδώ.\n\nΣυνδεθείτε στο Wi-Fi (Ρυθμίσεις → Wi-Fi)\nγια λήψη αυτής της περιοχής.
 No mapped repeaters in this route	Δεν υπάρχουν χαρτογραφημένοι αναμεταδότες σε αυτή τη διαδρομή

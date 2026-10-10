@@ -564,6 +564,8 @@ No discovered nodes yet.\n\nAnything heard over the air that isn't in your conta
 No earlier versions yet	Aucune version antérieure
 No local expansion data	Aucune donnée d'extension locale
 No location for this contact	Aucune position pour ce contact
+No map storage.\n\nInsert a microSD card to\nshow offline maps and\ncache Wi-Fi tiles.	Pas de stockage carte.\n\nInsérez une carte microSD pour\nles cartes hors ligne et\nles tuiles Wi-Fi.
+No map storage.\n\nThe RP2040 firmware has no\nmicroSD bridge. Update it\nto use the card.	Pas de stockage carte.\n\nLe firmware du RP2040 n'a pas\nde pont microSD. Mettez-le à jour\npour utiliser la carte.
 No map storage.\n\nInsert an SD card to cache\nWi-Fi tiles (or reflash to\nrestore the tiles partition).	Pas de stockage carte.\n\nInsérez une carte SD pour les\ntuiles Wi-Fi (ou reflashez pour\nrestaurer la partition des tuiles).
 No map tiles here.\n\nConnect to Wi-Fi (Settings → Wi-Fi)\nto download this area.	Aucune tuile ici.\n\nConnectez-vous au Wi-Fi (Réglages → Wi-Fi)\npour télécharger cette zone.
 No mapped repeaters in this route	Aucun répéteur cartographié sur cet itinéraire

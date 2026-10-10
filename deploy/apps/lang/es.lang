@@ -565,6 +565,8 @@ No discovered nodes yet.\n\nAnything heard over the air that isn't in your conta
 No earlier versions yet	Aún no hay versiones anteriores
 No local expansion data	Sin datos de expansión local
 No location for this contact	Sin ubicación para este contacto
+No map storage.\n\nInsert a microSD card to\nshow offline maps and\ncache Wi-Fi tiles.	Sin almacenamiento de mapa.\n\nInserta una tarjeta microSD para\nver mapas sin conexión y\nguardar teselas Wi-Fi.
+No map storage.\n\nThe RP2040 firmware has no\nmicroSD bridge. Update it\nto use the card.	Sin almacenamiento de mapa.\n\nEl firmware del RP2040 no tiene\npuente microSD. Actualízalo\npara usar la tarjeta.
 No map storage.\n\nInsert an SD card to cache\nWi-Fi tiles (or reflash to\nrestore the tiles partition).	Sin almacenamiento de mapa.\n\nInserta una tarjeta SD para teselas\nWi-Fi (o reinstala para restaurar\nla partición de teselas).
 No map tiles here.\n\nConnect to Wi-Fi (Settings → Wi-Fi)\nto download this area.	No hay teselas aquí.\n\nConéctate a Wi-Fi (Ajustes → Wi-Fi)\npara descargar esta zona.
 No mapped repeaters in this route	Sin repetidores mapeados en esta ruta

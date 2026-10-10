@@ -565,6 +565,8 @@ No discovered nodes yet.\n\nAnything heard over the air that isn't in your conta
 No earlier versions yet	Nicio versiune anterioară încă
 No local expansion data	Fără date locale de extensie
 No location for this contact	Fără locaţie pentru acest contact
+No map storage.\n\nInsert a microSD card to\nshow offline maps and\ncache Wi-Fi tiles.	Fără stocare pentru hartă.\n\nIntrodu un card microSD pentru\nhărţi offline şi\ndalele Wi-Fi.
+No map storage.\n\nThe RP2040 firmware has no\nmicroSD bridge. Update it\nto use the card.	Fără stocare pentru hartă.\n\nFirmware-ul RP2040 nu are\npunte microSD. Actualizează-l\npentru a folosi cardul.
 No map storage.\n\nInsert an SD card to cache\nWi-Fi tiles (or reflash to\nrestore the tiles partition).	Fără stocare pentru hartă.\n\nIntrodu un card SD pentru dalele\nWi-Fi (sau rescrie partiţia\nde dale ca s-o refaci).
 No map tiles here.\n\nConnect to Wi-Fi (Settings → Wi-Fi)\nto download this area.	Fără dale de hartă aici.\n\nConectează Wi-Fi (Setări → Wi-Fi)\npentru a descărca această zonă.
 No mapped repeaters in this route	Niciun repetor cartografiat pe această rută
