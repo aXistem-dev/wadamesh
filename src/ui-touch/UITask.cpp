@@ -192,6 +192,8 @@ static_assert(ChannelSenderSplit::kMaxWireName >= (size_t)UITask::MAX_SENDER_NAM
     #include <TDeckProDisplay.h>
   #elif defined(TLORA_PAGER)
     #include <helpers/ui/ST7796LCDDisplay.h>
+  #elif defined(HAS_SENSECAP_INDICATOR)
+    #include <IndicatorDisplay.h>
   #elif defined(HAS_WIO_TRACKER_L2)
     #include <WioTrackerL2Display.h>
     #include <WioTrackerL2Io.h>
@@ -264,6 +266,8 @@ static_assert(ChannelSenderSplit::kMaxWireName >= (size_t)UITask::MAX_SENDER_NAM
     extern TDeckProDisplay display;
   #elif defined(TLORA_PAGER)
     extern ST7796LCDDisplay display;
+  #elif defined(HAS_SENSECAP_INDICATOR)
+    extern IndicatorDisplay display;
   #elif defined(HAS_WIO_TRACKER_L2)
     extern WioTrackerL2Display display;
   #elif defined(HAS_CROWPANEL_35)
@@ -33504,6 +33508,8 @@ static int wifiScanWatchdogSafe(uint32_t cap_ms, uint16_t per_chan_ms = 300) {
   #endif
 #elif defined(ATTAKY_MESH_SERIES)
 #define WADA_BOARD_ID "attaky"
+#elif defined(HAS_SENSECAP_INDICATOR)
+#define WADA_BOARD_ID "sensecap-indicator"
 #elif defined(HAS_WIO_TRACKER_L2)
 #define WADA_BOARD_ID "wio-tracker-l2"
 #elif defined(HAS_CROWPANEL_35)
@@ -57706,7 +57712,7 @@ static lv_obj_t* hwIcon(lv_obj_t* parent, const char* glyph, uint32_t col, bool 
 static const lv_font_t* hwFitFont(const char* txt, int w, int h) {
   const lv_font_t* faces[] = {
     &lv_font_montserrat_28,
-#if defined(HAS_TANMATSU) || defined(HAS_TDISPLAY_P4) || defined(HAS_CROWPANEL_50) || defined(HELTEC_LORA_V4_R8) || defined(TLORA_PAGER) || defined(HAS_THINKNODE_M9) || defined(HAS_TDECK_GT911) || defined(DOC_CAPTURE)
+#if defined(HAS_TANMATSU) || defined(HAS_TDISPLAY_P4) || defined(HAS_CROWPANEL_50) || defined(HELTEC_LORA_V4_R8) || defined(TLORA_PAGER) || defined(HAS_THINKNODE_M9) || defined(HAS_TDECK_GT911) || defined(HAS_SENSECAP_INDICATOR) || defined(DOC_CAPTURE)
     &lv_font_montserrat_24, &lv_font_montserrat_20,
 #endif
     &g_font_semi_16, &g_font_semi_14, &g_font_12,
