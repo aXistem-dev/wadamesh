@@ -6,7 +6,7 @@ PlatformIO environment:
 sensecap_indicator_companion_radio_touch
 ```
 
-The SenseCAP Indicator D1L is an ESP32-S3 (8 MB flash, 8 MB octal PSRAM) with a 4-inch 480x480 RGB panel behind an ST7701S, an FT6336 capacitive touch controller and an SX1262. A TCA9535 I/O expander carries the radio chip select, reset, BUSY and DIO1 lines as well as the display chip select and reset and the touch reset and interrupt. A separate RP2040 co-processor owns the buzzer, microSD, Grove connector and (on the D1Pro) the sensors; this build does not use it. The D1Pro shares the ESP32 side of the board and is expected to run this image, but it is untested; the D1L is the reference target.
+The SenseCAP Indicator D1L is an ESP32-S3 (8 MB flash, 8 MB octal PSRAM) with a 4-inch 480x480 RGB panel behind an ST7701S, an FT6336 capacitive touch controller and an SX1262. A TCA9535 I/O expander carries the radio chip select, reset, BUSY and DIO1 lines as well as the display chip select and reset and the touch reset and interrupt. A separate RP2040 co-processor owns the buzzer, microSD, Grove connector and (on the D1Pro) the sensors; this build uses only its microSD, for map tiles, through the RP2040's UART bridge firmware. The D1Pro shares the ESP32 side of the board and is expected to run this image, but it is untested; the D1L is the reference target.
 
 The board is USB-powered and has no battery. `CAP_BATTERY` is 0, so the status bar has no battery glyph and the Battery settings page (history, calibrate, battery saver) is hidden. Power off is hidden.
 
@@ -21,7 +21,7 @@ The board is USB-powered and has no battery. `CAP_BATTERY` is 0, so the status b
 | Touch | FT6336 at 0x48 |
 | SX1262 | SPI FSPI at 4 MHz: SCLK 41, MISO 47, MOSI 48; NSS, RESET, BUSY and DIO1 on the expander; DIO2 drives the RF switch; DIO3 supplies the TCXO (2.4 V) when the strap selects it; current limit 140 mA, boosted RX gain |
 | User button | GPIO 38 |
-| RP2040 | held out of reset by expander P1.0; not otherwise used |
+| RP2040 | held out of reset by expander P1.0; bridge link on UART2 at 2 Mbaud, ESP TX GPIO 19 / RX GPIO 20 (the USB pads, released to the UART) |
 
 Expander map (TCA9535, port 0 then port 1):
 
@@ -45,6 +45,8 @@ The radio pins are virtual numbers that the HAL maps to the expander: `P_LORA_NS
 ## Boot sequence
 
 `IndicatorBoard::begin()` runs `ESP32Board::begin()`, then `IndicatorIo::begin()` under the shared I2C bus lock: 400 kHz clock, expander probe and shadow seed, NSS/CS/RESET outputs driven high, the four inputs configured, and a five-sample read of the radio strap (a majority decides the TCXO selection, so a single glitch cannot flip it). `[indicator] expander seeded out=.. cfg=..` logs the registers as the previous firmware or a warm reset left them, `[indicator] expander out=..` the result. A failure names its step: seed read, output config, input config or strap read.
+
+Then `indicatorSdBegin()` starts the RP2040 bridge: two pings of 500 ms at most, then one card-info request. `[indicator] rp2040: bridge v2` and `[indicator] sd: card=<present|none|busy|?> size=<MB> free=<MB>` report the result: `busy` while the RP2040 is still mounting the card, `?` when the card-info request got no answer, and `?` for a size or free space not known yet. The same line is logged on each card change. Without a version-2 pong it logs `[indicator] rp2040: no bridge (<reason>)` and the map behaves as on a board without a card slot.
 
 `display.begin()` follows: radio NSS high, LCD CS high, LCD RESET low for 10 ms and high again with a 120 ms settle, then with the bus lock held CS low, the LovyanGFX panel init, CS high. Holding the lock keeps any other task from moving the radio NSS while the init bit-bangs the shared GPIO 41/48. The panel init restores those two pins afterwards, and nothing writes panel commands after init. The backlight starts at about 63 % over a black frame. If the expander is not ready, `_lcd.init()` fails (`[indicator] display: lcd.init failed`) or an expander write during the sequence fails, `display.begin()` leaves the backlight off and returns false. The backlight then stays off: the UI still sends brightness and wake requests to the display, and the driver ignores them until the panel has come up.
 
@@ -90,6 +92,39 @@ FT6336 at 0x48 on the shared I2C bus, polled by the `indicator_touch` task on co
 
 Rotation: the controller reports both axes mirrored relative to the panel, so `x = 479 - raw_x` and `y = 479 - raw_y`, clamped to 0..479. The raw point is kept for the calibration screen. Gesture thresholds (40 and 16 px, 12 ms) are shared with the Wio Tracker L2 touch code.
 
+## microSD (via the RP2040)
+
+The microSD slot is wired to the RP2040, not to the ESP32, so the card is reached through the RP2040's bridge firmware over UART2. `IndicatorSdFs` (`indicatorSd`) is a file-level `fs::FS` over the bridge's file requests (`IndicatorSdCore.h`, `Rp2040Uart.h`). The card carries map tiles only.
+
+Link: frames of `0x94 0xC3`, a big-endian 16-bit length and an `InterdeviceMessage` of at most 4666 bytes (`Rp2040Link.h`). The messages are coded with nanopb (`nanopb/Nanopb @ 0.4.92`, in this env's `lib_deps` only) and the `proto/interdevice.pb.{h,c}` it generated from Meshtastic's `interdevice.proto` plus the MKDIR operation; the header of those files says how to regenerate them. Replies are paired with requests by id.
+
+Bridge firmware: the RP2040 needs an indicator_rp2040 build that answers ping version 2 and implements MKDIR (file_transfer operation 4); the Wi-Fi tile cache needs MKDIR to create its directories. Meshtastic's stock bridge build has no MKDIR and answers it with IO_ERROR "unknown operation" (or a nack). With that firmware the card is read-only from the first tile fetch on: offline packs still read, there is no Wi-Fi tile cache, and no tiles are downloaded.
+
+Card layout:
+
+| Path | Content |
+|---|---|
+| `/maps/osm/{z}/{x}/{y}.png` | offline tile packs, read with "Tiles from SD card" on |
+| `/tiles/{z}/{x}/{y}.jpg` | Wi-Fi tile cache, on the card either way (the partition table has no tiles partition) |
+
+Chat history, contacts, settings and every other data store stay on internal flash (SPIFFS and NVS). The bridge has no rename, positioned write or directory listing, so the data store, the file manager and card formatting do not use the card.
+
+Speed: a tile read typically costs around 140 ms; the timing log below reports the figure for the card in use. Reads go out in 4096-byte chunks with an 8-chunk read-ahead, up to 3 requests in flight; a negative cache of 256 entries (60 s each) answers repeated misses without asking the card.
+
+Writes: requests that write (POST, PUT, DELETE, MKDIR) wait up to 5 s for their reply (`kSdWriteReplyTimeoutMs`); GETs wait 500 ms. The bridge remounts the card each time it re-checks it: after a GET answered NOT_FOUND, and every 5 s once the card has been idle for 1 s. After a remount SdFat searches for a free cluster from the start of the FAT, so the first write of a new file can take about 3 s on a card whose free space starts far into the FAT; later writes take tens to a few hundred milliseconds. A write that fails for good removes its partial file.
+
+Threads: one recursive mutex covers every operation. The UI thread takes it with a 20 ms timeout, waits out at most 2 BUSY replies and 120 ms per reply, then fails fast for 300 ms (doubling with each failure in a row, up to 4.8 s) and redraws the missing tiles afterwards. The tile fetcher on core 0 waits normally (30 BUSY retries of 100 ms, and the reply timeouts above).
+
+Absent bridge or card:
+
+- No bridge: without a version-2 pong at boot the feature is off, `[indicator] rp2040: no bridge (<reason>)` is logged, the map has no "Tiles from SD card" row, downloads no tiles (there is nowhere to keep them) and says that the RP2040 firmware has no microSD bridge.
+- No card: `sd: card=none`; the map has no tile store and shows its storage notice. A card inserted later is picked up by the card-info poll.
+- Card pulled during a read: the read fails within one reply timeout and the tile shows as missing; the UI does not freeze. BUSY replies while the RP2040 mounts a card are never cached as "not found", so tiles return once the card is back.
+
+Card changes: there is no card-detect line, so the UI loop polls the card info every 5 s while the map uses the card (1 s while a card mounts; 5 s, then 30 s apart while the bridge does not answer). A new, removed or swapped card, or an RP2040 restart, re-checks the tile source.
+
+Timing log: `[indicator] sd: tiles=<n> avg=<n>ms/tile` once a minute while the map tab is open on the card (UI-thread card time per tile read, misses included).
+
 ## Flash layout and image size
 
 Partition table `variants/sensecap_indicator/partitions_sensecap_indicator.csv`, 8 MB:
@@ -107,12 +142,12 @@ The image takes about 3.4 MB (roughly 92 %) of the 3670016-byte (0x380000) app s
 
 ## Not in this port
 
-- RP2040 peripherals: the buzzer, the microSD slot, the Grove I2C connector and the D1Pro sensors are not used. The RP2040 is only held out of reset. There is no storage card, so there is no SD-backed data.
-- Maps need storage: the partition table has no map tile partition, so map tiles are unavailable until the SD slot or a tile partition is added.
+- RP2040 peripherals: the buzzer, the Grove I2C connector and the D1Pro sensors are not used.
+- The microSD carries map tiles only. The bridge has no rename, positioned write or directory listing, so the data store, the file manager, card formatting and the other SD features stay off; chat history, contacts and settings stay on internal flash.
 - Deep sleep and power off: nothing can wake the board, so Power off is hidden and deep sleep is not offered.
 - OTA release artifacts: this is a development target; no web-flasher or OTA release image is produced.
 - Battery reporting: there is no battery; `getBattMilliVolts()` returns 0.
 
 ## Validation status
 
-Exercised on a D1L: boot after a cold power-on, a reset and a reboot from the UI; colours and orientation; touch; the UI at Normal, Large and Huge; the Constellation screensaver and a radar widget on Home at 12 MHz; the user button; channel and direct messages sent and received with ACKs, including a two-hour direct-message soak with no reset; DM timestamps on the receiving node; the idle `/INT` wake rate. Not yet exercised: the D1Pro, the first boot after Meshtastic or the Seeed stock firmware, every backlight level, the spectrum scan.
+Exercised on a D1L: boot after a cold power-on, a reset and a reboot from the UI; colours and orientation; touch; the UI at Normal, Large and Huge; the Constellation screensaver and a radar widget on Home at 12 MHz; the user button; channel and direct messages sent and received with ACKs, including a two-hour direct-message soak with no reset; DM timestamps on the receiving node; the idle `/INT` wake rate; the RP2040 bridge at boot, offline map tiles from the microSD and the card pulled and put back while the map is open. Not yet exercised: the D1Pro, the first boot after Meshtastic or the Seeed stock firmware, every backlight level, the spectrum scan, the Wi-Fi tile cache writes and a long map session.
